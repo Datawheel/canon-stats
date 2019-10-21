@@ -1,0 +1,22 @@
+{
+  "name": "canon-stats",
+  "version": "0.1.0",
+  "description": "Reusable statistical and complexity calculations using NodeJS and Express",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Datawheel/canon-stats.git"
+  },
+  "author": "Carlos Navarrete <cnavarreteliz@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Datawheel/canon-stats/issues"
+  },
+  "homepage": "https://github.com/Datawheel/canon-stats#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
