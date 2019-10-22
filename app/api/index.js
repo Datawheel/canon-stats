@@ -1,9 +1,9 @@
 const express = require("express");
+const app = express();
 const path = require("path");
 
 const api = process.env.CANON_STATS_API;
-const app = express();
-const port = process.env.CANON_PORT || "3300";
+const port = process.env.CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 
 const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
