@@ -1,6 +1,6 @@
 const path = require("path");
 
-const api = process.env.CANON_STATS_API;
+const api = `${process.env.CANON_STATS_API}data`;
 const spawn = require("child_process").spawn;
 
 const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
