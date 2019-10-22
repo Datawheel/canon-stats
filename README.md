@@ -1,3 +1,3 @@
 ## Install
 
-npm i https://github.com/Datawheel/canon-stats
+`npm i https://github.com/Datawheel/canon-stats`
