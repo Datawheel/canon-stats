@@ -6,12 +6,11 @@ const app = express();
 const port = process.env.PORT || "8000";
 const spawn = require("child_process").spawn;
 
-app.get("/api/eci", (req, res) => {
+const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
+
+app.get(`${BASE_URL}/eci`, (req, res) => {
   const pyFilePath = path.join(__dirname, "src/complexity_endpoints.py");
-  const py = spawn(
-    "python3",
-    ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "eci"]
-  );
+  const py = spawn("python3", ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "eci"]);
   let respString = "";
 
   // build response string based on results of python script
@@ -23,21 +22,16 @@ app.get("/api/eci", (req, res) => {
     try {
       const dataResult = JSON.parse(respString);
       return res.json(dataResult);
-    }
-    catch (e) {
+    } catch (e) {
       console.error(`\nrespString:\n${e}`);
-      return res.json({error: e});
+      return res.json({ error: e });
     }
   });
 });
 
-
-app.get("/api/rca", (req, res) => {
+app.get(`${BASE_URL}/rca`, (req, res) => {
   const pyFilePath = path.join(__dirname, "src/complexity_endpoints.py");
-  const py = spawn(
-    "python3",
-    ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "rca"]
-  );
+  const py = spawn("python3", ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "rca"]);
   let respString = "";
 
   // build response string based on results of python script
@@ -49,21 +43,16 @@ app.get("/api/rca", (req, res) => {
     try {
       const dataResult = JSON.parse(respString);
       return res.json(dataResult);
-    }
-    catch (e) {
+    } catch (e) {
       console.error(`\nrespString:\n${respString}`);
-      return res.json({error: e});
+      return res.json({ error: e });
     }
   });
 });
 
-
-app.get("/api/relatedness", (req, res) => {
+app.get(`${BASE_URL}/relatedness`, (req, res) => {
   const pyFilePath = path.join(__dirname, "src/complexity_endpoints.py");
-  const py = spawn(
-    "python3",
-    ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "relatedness"]
-  );
+  const py = spawn("python3", ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, "relatedness"]);
   let respString = "";
 
   // build response string based on results of python script
@@ -75,10 +64,9 @@ app.get("/api/relatedness", (req, res) => {
     try {
       const dataResult = JSON.parse(respString);
       return res.json(dataResult);
-    }
-    catch (e) {
+    } catch (e) {
       console.error(`\nrespString:\n${respString}`);
-      return res.json({error: "Hello"});
+      return res.json({ error: "Hello" });
     }
   });
 });
