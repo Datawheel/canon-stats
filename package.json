@@ -2,10 +2,10 @@
   "name": "@datawheel/canon-stats",
   "version": "0.1.0",
   "description": "Reusable statistical and complexity calculations using NodeJS and Express",
-  "main": "src/index.js",
+  "main": "src/api/complexityRoute.js",
   "scripts": {
-    "build": "rm -rf dist/ && mkdir dist && npx babel src/ --out-dir dist --copy-files",
-    "dev": "nodemon ./index.js"
+    "build": "rm -rf src/ && mkdir src && npx babel app/ --out-dir src --copy-files",
+    "dev": "nodemon app/index.js"
   },
   "repository": {
     "type": "git",
