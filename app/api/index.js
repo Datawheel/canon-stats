@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const path = require("path");
 
-const api = `${process.env.CANON_STATS_API}data`;
+const api = `${process.env.CANON_STATS_API}/data`;
 const port = process.env.CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 
