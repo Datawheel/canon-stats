@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-def density(rcas, proximities):
+def relatedness(rcas, proximities):
     rcas = rcas.copy()
     rcas[rcas >= 1] = 1
     rcas[rcas < 1] = 0

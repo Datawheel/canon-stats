@@ -1,4 +1,4 @@
-from .density import density
+from .relatedness import relatedness
 
 def distance(rcas, proximities):
-    return 1 - density(rcas, proximities)
+    return 1 - relatedness(rcas, proximities)
