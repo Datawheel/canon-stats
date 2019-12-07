@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 import pandas as pd
-from .density import density
+from .relatedness import relatedness
 
 def opportunity_gain(rcas, proximities, pci):
 
@@ -14,14 +14,14 @@ def opportunity_gain(rcas, proximities, pci):
     inverse_rcas = 1 - rcas
 
     # convert PCIs to a matrix of repeated values
-    pci_matrix = pd.DataFrame(pci.reshape((1, len(pci))), columns=pci.index)
+    pci_matrix = pd.DataFrame(pci.values.reshape((1, len(pci))), columns=pci.index)
     pci_matrix = pci_matrix.reindex(index=rcas.index, method="ffill") # forward fill
 
     # here we now have the middle part of the equation
     middle = inverse_rcas * pci_matrix
 
-    # get the density with the backwards bizzaro RCAs
-    dcp = density(1-rcas, proximities)
+    # get the relatedness with the backwards bizzaro RCAs
+    dcp = relatedness(1-rcas, proximities)
     # now get the inverse
     dcp = 1-dcp
     # we now have the right-half of the equation

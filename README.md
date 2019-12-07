@@ -12,7 +12,14 @@ export CANON_STATS_API=https://api.datamexico.org/tesseract/
 
 Once the package has been installed on any site using @datawheel/canon-core, the canon core server will automatically hook up the necessary cache and api routes for the stats endpoints.
 
+### Python environment
 
+```
+pip3 install virtualenv
+virtualenv venv
+source ./venv/bin/activate
+pip3 install -r requirements.txt
+```
 
 
 ## Usage
