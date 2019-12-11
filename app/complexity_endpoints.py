@@ -61,6 +61,10 @@ def eci():
 
     results = _filter(results, [dd1, dd2])
 
+    if "ranking" in params and params["ranking"] == "true":
+        results = results.sort_values("{} ECI".format(measure), ascending=False)
+        results["{} Ranking".format(measure)] = range(1, results.shape[0] + 1)
+
     _output(results)
 
 
