@@ -32,12 +32,19 @@ def _output(df):
       "data": json.loads(df.to_json(orient="records"))
       }))
 
-
-def eci():
+def _params():
     dd1, dd2, measure = params["rca"].split(",")
+    if "alias" in params:
+        dd1, dd2 = params["alias"].split(",")
 
     dd1_id = "{} ID".format(dd1)
     dd2_id = "{} ID".format(dd2)
+
+    return dd1, dd2, measure, dd1_id, dd2_id
+
+
+def eci():
+    dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     df = _load_data()
 
@@ -70,10 +77,7 @@ def eci():
 
 def _opportunity_gain():
 
-    dd1, dd2, measure = params["rca"].split(",")
-
-    dd1_id = "{} ID".format(dd1)
-    dd2_id = "{} ID".format(dd2)
+    dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     df = _load_data()
 
@@ -104,12 +108,10 @@ def _opportunity_gain():
 
 
 def _proximity():
-    dd1, dd2, measure = params["rca"].split(",")
+    dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     df = _load_data()
 
-    dd1_id = "{} ID".format(dd1)
-    dd2_id = "{} ID".format(dd2)
 
     df_labels = df[["{}".format(dd2), dd2_id]].drop_duplicates()
 
@@ -137,7 +139,7 @@ def _proximity():
     _output(df)
 
 def rca():
-    dd1, dd2, measure = params["rca"].split(",")
+    dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     df = _load_data()
     df = _filter(df, [dd1, dd2])
@@ -148,10 +150,7 @@ def rca():
 def _relatedness():
     df = _load_data()
 
-    dd1, dd2, measure = params["rca"].split(",")
-
-    dd1_id = "{} ID".format(dd1)
-    dd2_id = "{} ID".format(dd2)
+    dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     dd1_df = df[["{}".format(dd1), dd1_id]].drop_duplicates()
     dd2_df = df[["{}".format(dd2), dd2_id]].drop_duplicates()
