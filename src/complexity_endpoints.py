@@ -61,6 +61,10 @@ def eci():
 
     results = _filter(results, [dd1, dd2])
 
+    if "ranking" in params and params["ranking"] == "true":
+        results = results.sort_values("{} ECI".format(measure), ascending=False)
+        results["{} Ranking".format(measure)] = range(1, results.shape[0] + 1)
+
     _output(results)
 
 
@@ -98,6 +102,39 @@ def _opportunity_gain():
 
     _output(results)
 
+
+def _proximity():
+    dd1, dd2, measure = params["rca"].split(",")
+
+    df = _load_data()
+
+    dd1_id = "{} ID".format(dd1)
+    dd2_id = "{} ID".format(dd2)
+
+    df_labels = df[["{}".format(dd2), dd2_id]].drop_duplicates()
+
+    rcas = df.pivot(
+        index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
+    ).reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
+    rcas = rcas.astype(float)
+    df = proximity(rcas)
+
+    df = df.reset_index()
+    df = df.rename(columns={dd2_id: "{} Target".format(dd2_id)})
+    df = pd.melt(df, id_vars="{} Target".format(dd2_id), value_name="{} Proximity".format(measure))
+    df = df.rename(columns={dd2_id: "{} Source".format(dd2_id)})
+    df = df[df["{} Source".format(dd2_id)] != df["{} Target".format(dd2_id)]]
+
+    for item in ["Source", "Target"]:
+        df = df.merge(df_labels, left_on="{} {}".format(dd2_id, item), right_on=dd2_id)
+        df = df.rename(columns={dd2: "{} {}".format(dd2, item)})
+        df = df.drop(columns=[dd2_id])
+
+    filter_var = "filter_{}".format(dd2)
+    if filter_var in params and "{} ID Source".format(dd2) in list(df):
+        df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
+
+    _output(df)
 
 def rca():
     dd1, dd2, measure = params["rca"].split(",")
@@ -149,6 +186,8 @@ if __name__ == "__main__":
         eci()
     elif function_name == "opportunity_gain":
         _opportunity_gain()
+    elif function_name == "proximity":
+        _proximity()
     elif function_name == "relatedness":
         _relatedness()
     elif function_name == "rca":
