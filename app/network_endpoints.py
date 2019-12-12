@@ -13,6 +13,8 @@ params = json.loads(sys.argv[1])
 
 def network():
     dd1, dd2, measure = params["rca"].split(",")
+    if "alias" in params:
+        dd1, dd2 = params["alias"].split(",")
 
     dd1_id = "{} ID".format(dd1)
     dd2_id = "{} ID".format(dd2)
