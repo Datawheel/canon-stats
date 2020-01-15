@@ -13,7 +13,7 @@ const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
   app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
     const pyFilePath = path.join(__dirname, "../complexity_endpoints.py");
     const py = spawn(
-      "python3",
+      "python",
       ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, endpoint]
     );
     let respString = "";

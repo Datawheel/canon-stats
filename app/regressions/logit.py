@@ -12,6 +12,7 @@ def logit(API, params):
     r = requests.get(API, params=params)
 
     df = pd.DataFrame(r.json()["data"])
+    df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce')
     measures = params["measures"].split(",")
 
     y = df[[measures[0]]] > df[[measures[0]]].mean()
@@ -19,7 +20,7 @@ def logit(API, params):
     X = sm.add_constant(X)
 
     model = sm.Logit(y, X)
-    results = model.fit()
+    results = model.fit(disp=0)
     results.summary()
 
     # results_as_html = results.summary().tables[1].as_html()
@@ -43,4 +44,4 @@ def logit(API, params):
 
 
 if __name__ == "__main__":
-    logit(sys.argv[1])
+    logit("https://api.oec.world/tesseract/data", {"drilldowns": "HS4", "measures": "Trade Value,Quantity", "cube": "trade_s_can_m_hs"})
