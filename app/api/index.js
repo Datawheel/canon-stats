@@ -7,13 +7,14 @@ const port = process.env.CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 
 const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
+const ENGINE = process.env.CANON_STATS_PYTHON_ENGINE || "python3";
 
 
 ["eci", "rca", "proximity", "relatedness", "opportunity_gain"].forEach(endpoint => {
   app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
     const pyFilePath = path.join(__dirname, "../complexity_endpoints.py");
     const py = spawn(
-      "python",
+      ENGINE,
       ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, endpoint]
     );
     let respString = "";
@@ -40,7 +41,7 @@ const BASE_URL = process.env.CANON_STATS_BASE_URL || "/api/stats";
 app.get(`${BASE_URL}/network`, (req, res) => {
   const pyFilePath = path.join(__dirname, "../network_endpoints.py");
   const py = spawn(
-    "python3",
+    ENGINE,
     ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api]
   );
   let respString = "";
@@ -66,7 +67,7 @@ app.get(`${BASE_URL}/network`, (req, res) => {
   app.get(`${BASE_URL}/${d}`, (req, res) => {
     const pyFilePath = path.join(__dirname, "../regressions_endpoints.py");
     const py = spawn(
-      "python",
+      ENGINE,
       ["-W", "ignore", pyFilePath, JSON.stringify(req.query), api, d]
     );
     let respString = "";
