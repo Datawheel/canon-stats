@@ -17,7 +17,7 @@ def rca(tbl):
     rca_denominator = row_sums / total_sum
     rcas = rca_numerator / rca_denominator
 
-    rcas[rcas >= 1] = 1
-    rcas[rcas < 1] = 0
+    # rcas[rcas >= 1] = 1
+    # rcas[rcas < 1] = 0
 
     return rcas
