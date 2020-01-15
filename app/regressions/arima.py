@@ -1,40 +1,15 @@
 import requests
 import pandas as pd
-import statsmodels.api as sm
 import json
-from functools import reduce
-from urllib import parse
 import sys
+import numpy as np
 from statsmodels.tsa.arima_model import ARIMA
-from sklearn.metrics import mean_squared_error
 import warnings
-from pandas.plotting import autocorrelation_plot
-from sklearn.metrics import mean_squared_error
-import matplotlib.pyplot as pyplot
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas import Series
-
-import requests
-import pandas as pd
-import statsmodels.api as sm
-import json
+from sklearn.metrics import mean_squared_error
 from functools import reduce
-from urllib import parse
-import sys
-from statsmodels.tsa.arima_model import ARIMA
-from sklearn.metrics import mean_squared_error
-import warnings
-from pandas.plotting import autocorrelation_plot
-from sklearn.metrics import mean_squared_error
-import matplotlib.pyplot as pyplot
-import matplotlib.pyplot as plt
-import numpy as np
-import warnings
-from pandas import Series
-from statsmodels.tsa.arima_model import ARIMA
-from sklearn.metrics import mean_squared_error
-
 
 def evaluate_arima_model(X, arima_order):
     # prepare training dataset
@@ -54,6 +29,7 @@ def evaluate_arima_model(X, arima_order):
     error = mean_squared_error(test, predictions)
     return error
 
+
 # evaluate combinations of p, d and q values for an ARIMA model
 def evaluate_models(dataset, p_values, d_values, q_values):
     dataset = dataset.astype('float32')
@@ -66,10 +42,10 @@ def evaluate_models(dataset, p_values, d_values, q_values):
                     mse = evaluate_arima_model(dataset, order)
                     if mse < best_score:
                         best_score, best_cfg = mse, order
-                    print('ARIMA%s MSE=%.3f' % (order,mse))
+                    #print('ARIMA%s MSE=%.3f' % (order,mse))
                 except:
                     continue
-    return best_cfg
+    return (best_cfg)
 
 
 ## Predictions on ARIMA Model
@@ -86,37 +62,61 @@ def pred_func(X,order):
 		predictions.append(yhat)
 		obs = test[t]
 		history.append(obs)
-		print('predicted=%f, expected=%f' % (yhat, obs))
-	error = mean_squared_error(test, predictions)
-	plt.show()
+		#print('predicted=%f, expected=%f' % (yhat, obs))
+	#plt.show()
 	return predictions
+
+
+
 
 def arima(API, params):
 
-    #Recolección de datos
     r = requests.get(API, params=params)
-
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
-
     X = pd.DataFrame(df, columns=measures[:]).set_index(df["Year"])
-
-    p_values = [0, 1, 2, 4, 6, 8, 10]
+    
+    p_values = range(0, 3)
     d_values = range(0, 3)
     q_values = range(0, 3)
     warnings.filterwarnings("ignore")
     best_cfg = evaluate_models(X.values, p_values, d_values, q_values)
-    model = ARIMA(X.values, order=best_cfg)
-    results = model.fit()
-
-    results_as_html = results.summary().tables[1].as_html()
-    df_1 = pd.read_html(results_as_html, header=0, index_col=0)
-    df_2 = df_1[0].reset_index().rename(columns={"index": "id"})
-
-    return {
+    model = ARIMA(X.values, order=(1,0,0))
+    results = model.fit(disp=0)
     
-        "Measures": pd.DataFrame(df_2).to_dict(orient="records")
+    start_index = 0
+    end_index = (len(X)+10)
+    forecast = results.predict()
+    forecast_list = forecast.tolist()
+
+    data = {
+        "model":[
+            {"name": "exog_name", "value": model.exog_names},
+            {"name": "params", "value": results.params},
+            {"name": "bse", "value": results.bse},
+            {"name": "t_values", "value": results.tvalues},
+            {"name": "p_values", "value": results.pvalues},
+            {"name": "low_cof_int", "value": results.conf_int()[0]},
+            {"name": "upp_cof_int", "value": results.conf_int()[1]}
+    ]
     }
 
+    df_list = []
+
+    for item in data["model"]:
+        df = pd.DataFrame(item["value"]).reset_index().rename(
+            columns={"index": "id", 0: item["name"]})
+        df_list.append(df)
+
+    df = reduce(lambda x, y: pd.merge(x, y, on="id", how="inner"), df_list)
+    df = df.drop(["id"], axis=1)
+
+    return {
+    "Predictions": forecast_list,
+    "Measures" : pd.DataFrame(df).to_dict(orient="records")
+    }
+
+
 if __name__ == "__main__":
-    arima(sys.argv[1])
+    arima("https://api.oec.world/tesseract/data",
+          {"drilldowns": "Year", "measures": "Trade Value", "cube": "trade_i_baci_a_92"})
