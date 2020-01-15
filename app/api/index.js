@@ -63,7 +63,7 @@ app.get(`${BASE_URL}/network`, (req, res) => {
   });
 });
 
-["ols", "logit"].forEach(d => {
+["ols", "logit","arima"].forEach(d => {
   app.get(`${BASE_URL}/${d}`, (req, res) => {
     const pyFilePath = path.join(__dirname, "../regressions_endpoints.py");
     const py = spawn(
