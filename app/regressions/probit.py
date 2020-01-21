@@ -2,65 +2,61 @@ import json
 import pandas as pd
 import requests
 import statsmodels.api as sm
+
 import sys
 
 from functools import reduce
 
-
-def logit(API, params):
+def probit(API, params):
 
     r = requests.get(API, params=params)
 
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
-
-    # Creo un dataframe
-    df = pd.DataFrame(r.json()["data"])
-
-    # Paso los valores de la primera columna a una provicional llamada endogena
-    endog = df[[measures[0]]]
-
-    # Creo una columna que contenga un booleano si supera el promedio
-    endog["mu"] = endog > endog.mean()
-
-    # Calculo del logit
-    y = endog["mu"]
+    y = df[[measures[0]]] > df[[measures[0]]].mean()
     X = pd.DataFrame(df, columns=measures[1:])
     X = sm.add_constant(X)
 
-    model = sm.OLS(y, X)
-    results = model.fit()
+    model = sm.Probit(y, X)
+    results = model.fit(disp=0)
 
-    data = [
-        {"name": "coef", "value": results.params},
-        {"name": "std err", "value": results.bse},
-        {"name": "z", "value": results.tvalues},
-        {"name": "P > |z|", "value": results.pvalues},
-        {"name": "low_cof_int", "value": results.conf_int()[0]},
-        {"name": "upp_cof_int", "value": results.conf_int()[1]}
-    ]
-
-    df_list = []
-
-    for item in data:
-        df = pd.DataFrame(item["value"]).reset_index().rename(
-            columns={"index": "id", 0: item["name"], 1: item["name"]})
-        df_list.append(df)
-
-    df = reduce(lambda x, y: pd.merge(x, y, on="id", how="inner"), df_list)
-
-    return {
-        "rsquared": results.rsquared,
-        "adj. rsquared": results.rsquared_adj,
-        "F-stadistic": results.fvalue,
-        "Prob F-stadistic": results.fvalue,
-        "Log-likelihood": results.llf,
-        "AIC": results.aic,
-        "BIC": results.bic,
-        "n_observations": results.nobs,
-        "params": pd.DataFrame(df).to_dict(orient="records")
+    data = {
+        "model":[
+            {"name": "params", "value": results.params},
+            {"name": "bse", "value": results.bse},
+            {"name": "t_values", "value": results.tvalues},
+            {"name": "p_values", "value": results.pvalues},
+            {"name": "low_cof_int", "value": results.conf_int()[0]},
+            {"name": "upp_cof_int", "value": results.conf_int()[1]}
+        ]
     }
 
 
+    df_list = []
+
+    for item in data["model"]:
+        df = pd.DataFrame(item["value"]).reset_index().rename(
+            columns={"index": "id", 0: item["name"]})
+        df_list.append(df)
+
+    df = reduce(lambda x, y: pd.merge(x, y, on="id", how="inner"), df_list)
+    df = df.drop(["id"], axis=1)
+
+    return {
+    "model_info":[ 
+        {"model_info" : results.model.__class__.__name__},
+        #{"method" : model.method},
+        {"n. observations" : results.nobs},
+        {"pseudo_r_squared": results.prsquared},
+        {"df_residuals" : results.df_resid},
+        #{"df_model" : results.df_model},
+        {"llr" : results.llf},
+        {"llr_p_value" : results.llr},
+        {"llr_pvalue" : results.llr_pvalue}
+
+    ],    
+    "params": pd.DataFrame(df).to_dict(orient="records")
+    }
+
 if __name__ == "__main__":
-    logit(sys.argv[1])
+    probit("https://api.oec.world/tesseract/data", {"drilldowns": "HS4", "measures": "Trade Value,Quantity", "cube": "trade_s_can_m_hs"})

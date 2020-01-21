@@ -12,34 +12,24 @@ def logit(API, params):
     r = requests.get(API, params=params)
 
     df = pd.DataFrame(r.json()["data"])
-    df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce')
     measures = params["measures"].split(",")
-
     y = df[[measures[0]]] > df[[measures[0]]].mean()
     X = pd.DataFrame(df, columns=measures[1:])
     X = sm.add_constant(X)
 
     model = sm.Logit(y, X)
     results = model.fit(disp=0)
-    results.summary()
-
-    # results_as_html = results.summary().tables[1].as_html()
-    # df_1 = pd.read_html(results_as_html, header=0, index_col=0)
-    # df_2 = df_1[0].reset_index().rename(columns={"index": "id"})
-
+    print(results.llr)
     return {
-        "hello": "goodbye"
-        #"goodbye": X.to_dict(orient="records")
-        #"Model" : results.model.__class__.__name__,
-        #"Rsquared": results.rsquared,
-        #"Adj. squared": results.rsquared_adj,
-        #"F-stadistic": results.fvalue,
-        #"Prob F-stadistic": results.fvalue,
-       # "Log-likelihood": results.llf,
-       # "AIC": results.aic,
-       # "BIC": results.bic,
-       # "No. Observations": results.nobs,
-        #"Measures": pd.DataFrame(df_2).to_dict(orient="records"),
+        "model_info":[
+            {"model_info" : results.model.__class__.__name__},
+            {"n. observations" : results.nobs},
+            {"pseudo_r_squared": results.prsquared},
+            {"df_residuals" : results.df_resid},
+            {"df_model" : results.df_model},
+            {"llr" : results.llf},
+            #{"llr_p_value" : results.llr_pvalue}
+        ]
     }
 
 

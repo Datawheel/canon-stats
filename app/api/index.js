@@ -63,8 +63,11 @@ app.get(`${BASE_URL}/network`, (req, res) => {
   });
 });
 
-["ols", "logit","arima"].forEach(d => {
+["ols", "logit", "arima", "probit", "prophet"].forEach(d => {
   app.get(`${BASE_URL}/${d}`, (req, res) => {
+    res.header("Access-Control-Allow-Origin", "*"); // update to match the domain you will make the request from
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+ 
     const pyFilePath = path.join(__dirname, "../regressions_endpoints.py");
     const py = spawn(
       ENGINE,
