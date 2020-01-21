@@ -66,11 +66,11 @@ def eci():
     results = pd.DataFrame(eci).rename(columns={0: "{} ECI".format(measure)}).reset_index()
     results = df_labels.merge(results, on=dd1_id)
 
-    results = _filter(results, [dd1, dd2])
-
     if "ranking" in params and params["ranking"] == "true":
         results = results.sort_values("{} ECI".format(measure), ascending=False)
         results["{} Ranking".format(measure)] = range(1, results.shape[0] + 1)
+
+    results = _filter(results, [dd1, dd2])
 
     _output(results)
 
@@ -181,6 +181,15 @@ def _relatedness():
 
 if __name__ == "__main__":
     function_name = str(sys.argv[3])
+    options = {
+        "eci": eci(),
+        "opportunity_gain": _opportunity_gain(),
+        "proximity": _proximity(),
+        "rca": rca()
+        "relatedness": _relatedness()
+    }
+    options[function_name]
+    """
     if (function_name == "eci"):
         eci()
     elif function_name == "opportunity_gain":
@@ -191,3 +200,4 @@ if __name__ == "__main__":
         _relatedness()
     elif function_name == "rca":
         rca()
+    """
