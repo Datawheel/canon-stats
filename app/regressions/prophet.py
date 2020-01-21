@@ -49,17 +49,10 @@ def prophet(API, params):
         "changepoint_range" : 0.95
     }
 
-
-    if "seasonality_mode" in params:
-        default_params["seasonality_mode"] = params["seasonality_mode"]
+    for item in ["seasonality_mode", "changepoint_prior_scale", "changepoint_range"]:
+        if item in params:
+            default_params[item] = params[item]
     
-    if "changepoint_prior_scale" in params:
-        default_params["changepoint_prior_scale"] = float(params["changepoint_prior_scale"])
-    
-    if "changepoint_range" in params:
-        default_params["changepoint_range"] = float(params["changepoint_range"])
-    
-
     seasonality_mode = default_params.get("seasonality_mode")
     changepoint_prior_scale = default_params.get("changepoint_prior_scale")
     changepoint_range = default_params.get("changepoint_range")
