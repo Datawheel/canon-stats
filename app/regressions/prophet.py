@@ -107,7 +107,7 @@ def prophet(API, params):
     r = requests.get(API, params=params)
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
-    df[measures] = df[measures].astype(float)
+    df[measures] = df[measures].astype(float)  
     drilldowns = params["drilldowns"].split(",")
     
     data = pd.DataFrame()
@@ -117,17 +117,17 @@ def prophet(API, params):
         for item in items:
             df_temp = df.loc[df[drilldowns[1]] == item]
             values, train_dataset, names = pred(df_temp, drilldowns, measures)
-            values[str(drilldowns[1])] = item
-            values[str(drilldowns[1] + " "+ "ID")] = int(filters[np.where(df[drilldowns[1]].unique() == item )[0][0]]) 
+            values[drilldowns[1]] = item
+            values[drilldowns[1] + " "+ "ID"] = filters[list(df["Section"].unique()).index(item)]
             #creates a dataframe with predicted data
             df_pred = pd.DataFrame(values)
             #adds real values into dataframe
-            df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns = names)
+            df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
             data = pd.concat([data, df_final], ignore_index=True, sort =False)
     else: 
         values, train_dataset, names = pred(df, drilldowns, measures)
         df_pred = pd.DataFrame(values)
-        df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns = names)
+        df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
         data = pd.concat([data, df_final], ignore_index=True, sort=False)
 
     return {
