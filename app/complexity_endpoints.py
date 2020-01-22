@@ -7,6 +7,7 @@ import requests
 from complexity.complexity import complexity
 from complexity.opportunity_gain import opportunity_gain
 from complexity.proximity import proximity
+from complexity.rca import rca
 from complexity.relatedness import relatedness
 
 
@@ -23,8 +24,40 @@ def _filter(df, dds):
 
 
 def _load_data():
-    r = requests.get(API, params=params)
-    return pd.DataFrame(r.json()["data"])
+    _params = params.copy()
+    dd1, dd2, measure = _params["rca"].split(",")
+    _params["drilldowns"] = "{},{}".format(dd1, dd2)
+    _params["measures"] = measure
+    _params.pop("rca", None)
+    r = requests.get(API, params=_params)
+    df = pd.DataFrame(r.json()["data"])
+
+    if "alias" in _params:
+        dd1, dd2 = _params["alias"].split(",")
+
+    dd1_id = "{} ID".format(dd1)
+    dd2_id = "{} ID".format(dd2)
+
+    df_labels_1 = df[["{}".format(dd1), dd1_id]].drop_duplicates()
+    df_labels_2 = df[["{}".format(dd2), dd2_id]].drop_duplicates()
+
+    for dd in [dd1, dd2]:
+        filter_var = "threshold_{}".format(dd)
+        dd_id = "{} ID".format(dd)
+        if filter_var in _params and dd_id in list(df):
+            df_temp = df[[dd_id, measure]].groupby([dd_id]).sum().reset_index()
+            list_temp = df_temp[df_temp[measure] >= float(params[filter_var])][dd_id].unique()
+            df = df[df[dd_id].isin(list_temp)]
+
+
+    df = df.pivot(index=dd1_id, columns=dd2_id, values=measure)
+
+    output = rca(df).reset_index().melt(id_vars=dd1_id, value_name="{} RCA".format(measure))
+    output = df_labels_1.merge(output, on=dd1_id)
+    output = df_labels_2.merge(output, on=dd2_id)
+
+    return output
+
 
 
 def _output(df):
@@ -66,11 +99,11 @@ def eci():
     results = pd.DataFrame(eci).rename(columns={0: "{} ECI".format(measure)}).reset_index()
     results = df_labels.merge(results, on=dd1_id)
 
-    results = _filter(results, [dd1, dd2])
-
     if "ranking" in params and params["ranking"] == "true":
         results = results.sort_values("{} ECI".format(measure), ascending=False)
         results["{} Ranking".format(measure)] = range(1, results.shape[0] + 1)
+
+    results = _filter(results, [dd1, dd2])
 
     _output(results)
 
@@ -138,7 +171,7 @@ def _proximity():
 
     _output(df)
 
-def rca():
+def _rca():
     dd1, dd2, measure, dd1_id, dd2_id = _params()
 
     df = _load_data()
@@ -190,4 +223,4 @@ if __name__ == "__main__":
     elif function_name == "relatedness":
         _relatedness()
     elif function_name == "rca":
-        rca()
+        _rca()
