@@ -118,7 +118,7 @@ def prophet(API, params):
             df_temp = df.loc[df[drilldowns[1]] == item]
             values, train_dataset, names = pred(df_temp, drilldowns, measures)
             values[drilldowns[1]] = item
-            values[drilldowns[1] + " "+ "ID"] = filters[list(df["Section"].unique()).index(item)]
+            values[drilldowns[1] + " "+ "ID"] = int(filters[list(df["Section"].unique()).index(item)])
             #creates a dataframe with predicted data
             df_pred = pd.DataFrame(values)
             #adds real values into dataframe
