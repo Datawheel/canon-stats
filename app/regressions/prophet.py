@@ -46,26 +46,26 @@ def prophet(API, params):
     default_params = {
         "seasonality_mode" : "multiplicative",
         "changepoint_prior_scale" : 0.05,
-        "changepoint_range" : 0.95
+        "changepoint_range" : 0.95,
+        "periods" : 10
     }
 
-    for item in ["seasonality_mode", "changepoint_prior_scale", "changepoint_range"]:
+    for item in default_params.keys():
         if item in params:
             default_params[item] = params[item]
     
     seasonality_mode = default_params.get("seasonality_mode")
-    changepoint_prior_scale = default_params.get("changepoint_prior_scale")
-    changepoint_range = default_params.get("changepoint_range")
-
-    if "Month" in df.columns:
+    changepoint_prior_scale = float(default_params.get("changepoint_prior_scale"))
+    changepoint_range = float(default_params.get("changepoint_range"))
+    periods = int(default_params.get("periods"))
+   
+    if params["drilldowns"][0] == "M":
         X = pd.to_datetime(df['Year'].astype(str) + df['Month'].astype(str), format='%Y%B')
         time_param = "%Y-%m"
-        periods = 120
-        
+
     else: 
         X = pd.to_datetime(df['Year'].astype(str), format='%Y')
         time_param = "%Y"
-        periods = 10
     
     freq = params["drilldowns"][0]
     X_df = pd.DataFrame(X)
@@ -73,12 +73,12 @@ def prophet(API, params):
     for item in [0, "Year", "Month", "Days"]:
         X_df = pd.DataFrame(X_df).rename(columns={item: "Date"})
 
-    df2 = pd.DataFrame(df[params["measures"]])
+    df2 = pd.DataFrame(df[measures[0]])
     merged = X_df.merge(df2, left_index=True, right_index=True)
 
     train_dataset = pd.DataFrame()
     train_dataset["ds"] = merged["Date"]
-    train_dataset["y"] = merged[params["measures"]]
+    train_dataset["y"] = merged[measures[0]]
     
     
     with suppress_stdout_stderr():
@@ -93,27 +93,28 @@ def prophet(API, params):
 
         names = {
             "ds": params["drilldowns"],
-            "y" : params["measures"],
-            "yhat": params["measures"] + " Prediction",
-            "yhat_upper": params["measures"] + " Upper Bound",
-            "yhat_lower": params["measures"] + " Lower Bound",
-            "trend": params["measures"] + " Trend",
-            "trend_lower": params["measures"] + " Lower Trend",
-            "trend_upper": params["measures"] + " upper Trend"    
+            "y" : measures[0],
+            "yhat": measures[0] + " Prediction",
+            "yhat_upper": measures[0] + " Upper Bound",
+            "yhat_lower": measures[0] + " Lower Bound",
+            "trend": measures[0] + " Trend",
+            "trend_lower": measures[0] + " Lower Trend",
+            "trend_upper": measures[0] + " upper Trend"    
         }
 
         values["group"] = "chl"
     
         df_pred = pd.DataFrame(values)
-        df_final = pd.merge(train_dataset,df_pred, on='ds', how='outer').fillna("null").rename(columns=names)
-        
+        df_final = pd.merge(train_dataset,df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
+    
 
     return {
         "predictions" : df_final.to_dict(orient = "records"),      
         "prophet_args" : [
             {"seasonality_mode" : seasonality_mode},
             {"changepoint_prior_scale" : changepoint_prior_scale},
-            {"changepoint_range" : changepoint_range}
+            {"changepoint_range" : changepoint_range},
+            {"periods" : periods}
         ]
     }
 
