@@ -7,6 +7,7 @@ import warnings
 from fbprophet import Prophet
 import os 
 
+
 class suppress_stdout_stderr(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in
@@ -36,63 +37,59 @@ class suppress_stdout_stderr(object):
         for fd in self.null_fds + self.save_fds:
             os.close(fd)
 
-def prophet(API, params):
 
-    r = requests.get(API, params=params)
-    df = pd.DataFrame(r.json()["data"])
-    measures = params["measures"].split(",")
- 
- 
+def pred(df, drilldowns, measures):
+
     default_params = {
-        "seasonality_mode" : "multiplicative",
         "changepoint_prior_scale" : 0.05,
         "changepoint_range" : 0.95,
-        "periods" : 10
+        "periods" : 10,
+        "seasonality_mode" : "multiplicative"
     }
 
-    for item in default_params.keys():
-        if item in params:
-            default_params[item] = params[item]
-    
-    seasonality_mode = default_params.get("seasonality_mode")
     changepoint_prior_scale = float(default_params.get("changepoint_prior_scale"))
     changepoint_range = float(default_params.get("changepoint_range"))
     periods = int(default_params.get("periods"))
-   
-    if params["drilldowns"][0] == "M":
-        X = pd.to_datetime(df['Year'].astype(str) + df['Month'].astype(str), format='%Y%B')
-        time_param = "%Y-%m"
+    seasonality_mode = default_params.get("seasonality_mode")
 
-    else: 
-        X = pd.to_datetime(df['Year'].astype(str), format='%Y')
+    #Change format for date
+    if "Month" in drilldowns[0]:
+        X = pd.to_datetime(df[["Year", "Month"]], format="%Y%B")
+        time_param = "%Y-%m"
+    
+    elif "Year" in drilldowns[0]: 
+        X = pd.to_datetime(df["Year"], format="%Y")
         time_param = "%Y"
     
-    freq = params["drilldowns"][0]
-    X_df = pd.DataFrame(X)
-
-    for item in [0, "Year", "Month", "Days"]:
-        X_df = pd.DataFrame(X_df).rename(columns={item: "Date"})
-
-    df2 = pd.DataFrame(df[measures[0]])
-    merged = X_df.merge(df2, left_index=True, right_index=True)
-
-    train_dataset = pd.DataFrame()
-    train_dataset["ds"] = merged["Date"]
-    train_dataset["y"] = merged[measures[0]]
+    freq = drilldowns[0][0]
+    df_temp = pd.DataFrame(X)
     
+    # Rename time column to "Date", in case it bugs
+    for item in [0, "Year", "Month", "Days"]:
+            df_temp = pd.DataFrame(df_temp).rename(columns={item: "Date"})
+    
+    
+    # Prepares dataset for prophet
+    df2 = pd.DataFrame(df[measures[0]])
+    merged = df_temp.merge(df2, left_index=True, right_index=True)
+    train_dataset = pd.DataFrame(merged[["Date", measures[0]]]).rename(columns={"Date": "ds", measures[0]: "y"})
+  
     
     with suppress_stdout_stderr():
         
-        m = Prophet(seasonality_mode=seasonality_mode, changepoint_prior_scale=changepoint_prior_scale, changepoint_range=changepoint_range)
-        m.fit(train_dataset)
-        future = m.make_future_dataframe(periods=periods, freq=freq)
-        forecast = m.predict(future)
+        model = Prophet(seasonality_mode=seasonality_mode, changepoint_prior_scale=changepoint_prior_scale, changepoint_range=changepoint_range)
+        model.fit(train_dataset)
+
+        # Makes future predictions
+        future = model.make_future_dataframe(periods=periods, freq=freq)
+        forecast = model.predict(future)
         forecast["ds"] = forecast["ds"].dt.strftime(time_param)
         train_dataset["ds"] = train_dataset["ds"].dt.strftime(time_param)
         values = forecast[["ds", "yhat", "yhat_lower", "yhat_upper", "trend", "trend_lower", "trend_upper"]]
 
+        #Changes values forecasted names into parameter name used for regression
         names = {
-            "ds": params["drilldowns"],
+            "ds": drilldowns[0],
             "y" : measures[0],
             "yhat": measures[0] + " Prediction",
             "yhat_upper": measures[0] + " Upper Bound",
@@ -102,20 +99,39 @@ def prophet(API, params):
             "trend_upper": measures[0] + " upper Trend"    
         }
 
-        values["group"] = "chl"
+    return (values, train_dataset, names)
+
+
+def prophet(API, params):
+
+    r = requests.get(API, params=params)
+    df = pd.DataFrame(r.json()["data"])
+    measures = params["measures"].split(",")
+    df[measures] = df[measures].astype(float)
+    drilldowns = params["drilldowns"].split(",")
     
+    data = pd.DataFrame()
+    if len(drilldowns) > 1:
+        items = df[drilldowns[1]].unique()
+        filters = params[drilldowns[1]].split(",")
+        for item in items:
+            df_temp = df.loc[df[drilldowns[1]] == item]
+            values, train_dataset, names = pred(df_temp, drilldowns, measures)
+            values[str(drilldowns[1])] = item
+            values[str(drilldowns[1] + " "+ "ID")] = int(filters[np.where(df[drilldowns[1]].unique() == item )[0][0]]) 
+            #creates a dataframe with predicted data
+            df_pred = pd.DataFrame(values)
+            #adds real values into dataframe
+            df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns = names)
+            data = pd.concat([data, df_final], ignore_index=True, sort =False)
+    else: 
+        values, train_dataset, names = pred(df, drilldowns, measures)
         df_pred = pd.DataFrame(values)
-        df_final = pd.merge(train_dataset,df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
-    
+        df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns = names)
+        data = pd.concat([data, df_final], ignore_index=True, sort=False)
 
     return {
-        "predictions" : df_final.to_dict(orient = "records"),      
-        "prophet_args" : [
-            {"seasonality_mode" : seasonality_mode},
-            {"changepoint_prior_scale" : changepoint_prior_scale},
-            {"changepoint_range" : changepoint_range},
-            {"periods" : periods}
-        ]
+        "predictions" : data.to_dict(orient = "records"),
     }
 
 if __name__ == "__main__":
