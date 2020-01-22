@@ -24,15 +24,16 @@ def _filter(df, dds):
 
 
 def _load_data():
-    dd1, dd2, measure = params["rca"].split(",")
-    params["drilldowns"] = "{},{}".format(dd1, dd2)
-    params["measures"] = measure
-    params.pop("rca", None)
-    r = requests.get(API, params=params)
+    _params = params.copy()
+    dd1, dd2, measure = _params["rca"].split(",")
+    _params["drilldowns"] = "{},{}".format(dd1, dd2)
+    _params["measures"] = measure
+    _params.pop("rca", None)
+    r = requests.get(API, params=_params)
     df = pd.DataFrame(r.json()["data"])
 
-    if "alias" in params:
-        dd1, dd2 = params["alias"].split(",")
+    if "alias" in _params:
+        dd1, dd2 = _params["alias"].split(",")
 
     dd1_id = "{} ID".format(dd1)
     dd2_id = "{} ID".format(dd2)
@@ -43,7 +44,7 @@ def _load_data():
     for dd in [dd1, dd2]:
         filter_var = "threshold_{}".format(dd)
         dd_id = "{} ID".format(dd)
-        if filter_var in params and dd_id in list(df):
+        if filter_var in _params and dd_id in list(df):
             df_temp = df[[dd_id, measure]].groupby([dd_id]).sum().reset_index()
             list_temp = df_temp[df_temp[measure] >= float(params[filter_var])][dd_id].unique()
             df = df[df[dd_id].isin(list_temp)]
