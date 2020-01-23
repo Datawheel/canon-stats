@@ -81,24 +81,29 @@ Coming soon...
 
 
 ### Regressions
+ 
+`Prophet`
 
-1. Prophet
-
-* fbprophet Info
+fbprophet Info
 Uses fbprophet to make predictions for a time period.
 fbprophet admits two columns estrictly named "ds" which stands for datestamp and "y" where all the values are stored.
 Additional information can be found on the original paper: https://peerj.com/preprints/3190/
 
-* prophet.py breakdown
+prophet.py breakdown
 prophet.py admits time drilldowns such as "Year", "Month" and products drilldowns such as "Section".
+
+
+```
+prophet?cube=trade_i_baci_a_92&drilldowns=Year&measures=Trade+Value&parents=false&sparse=false
+```
 returns a JSON string with forecasted values and trend values, with their lower and upper bounds.
 
 The user is elegible to change parameters, in particular those who are shown in the following table.
 
-| variable | description | default | restriction |
-| - | - | - |
-| changepoint_prior_scale | Adjusts trend changes flexibility  | 0.05 | values between 0 and 1 |
-| changepoint_range | Proportion of history in which trend changepoints will be estimated. | 0.95 | values between 0 and 1 |
-| periods | Number of time periods used. | 10 | only natural numbers |
-| seasonality_mode | the effect of the seasonality is added to the trend to get the forecast | multiplicative | only "additive" or "multiplicative " |
+| variable | description | default | constraint |
+| - | - | - | - |
+| `changepoint_prior_scale` | Adjusts trend changes flexibility  | 0.05 | values between 0 and 1 |
+| `changepoint_range` | Proportion of history in which trend changepoints will be estimated. | 0.95 | values between 0 and 1 |
+| `periods` | Number of time periods used. | 10 | only natural numbers |
+| `seasonality_mode` | the effect of the seasonality is added to the trend to get the forecast | multiplicative | only "additive" or "multiplicative " |
 
