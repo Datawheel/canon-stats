@@ -78,3 +78,18 @@ The stats module includes endpoints for doing different calculations.
 ### Networks
 
 Coming soon...
+
+
+### Regressions
+
+1. Prophet
+
+Uses fbprophet to make predictions for a time period.
+The params used for the regressions are shown in this table:
+
+| variable | description | default |
+| - | - | - |
+| seasonality_mode | the effect of the seasonality is added to the trend to get the forecast | multiplicative |
+| changepoint_prior_scale | Adjusts trend changes flexibility  | 0.05 |
+| changepoint_range | Proportion of history in which trend changepoints will be estimated. | 0.95 |
+| periods | Number of time periods used. | 10|
