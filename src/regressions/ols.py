@@ -14,8 +14,8 @@ def ols(API, params):
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
 
-    y = df[[measures[0]]]
-    X = pd.DataFrame(df, columns=measures[1:])
+    y = df[[measures[0]]].astype(float)
+    X = pd.DataFrame(df, columns=measures[1:]).astype(float)
     X = sm.add_constant(X)
 
     model = sm.OLS(y, X)
@@ -41,7 +41,7 @@ def ols(API, params):
 
     for item in data["model"]:
         df = pd.DataFrame(item["value"]).reset_index().rename(
-            columns={"index": "id", 0: item["name"]})
+            columns={"index": "id", 0: item["name"], 1: item["name"]})
         df_list.append(df)
 
     df = reduce(lambda x, y: pd.merge(x, y, on="id", how="inner"), df_list)
@@ -50,8 +50,8 @@ def ols(API, params):
         "Model" : results.model.__class__.__name__,
         "Rsquared": results.rsquared,
         "Adj. squared": results.rsquared_adj,
-        "F-stadistic": results.fvalue,
-        "Prob F-stadistic": results.fvalue,
+        "F-statistic": results.fvalue,
+        "Prob F-statistic": results.fvalue,
         "Log-likelihood": results.llf,
         "AIC": results.aic,
         "BIC": results.bic,

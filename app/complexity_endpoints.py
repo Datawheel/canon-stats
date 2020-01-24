@@ -184,6 +184,7 @@ def _relatedness():
     df = _load_data()
 
     dd1, dd2, measure, dd1_id, dd2_id = _params()
+    relatedness_measure = "{} Relatedness".format(measure)
 
     dd1_df = df[["{}".format(dd1), dd1_id]].drop_duplicates()
     dd2_df = df[["{}".format(dd2), dd2_id]].drop_duplicates()
@@ -198,7 +199,7 @@ def _relatedness():
     df = df.astype(float)
 
     densities = relatedness(df, proximity(df))
-    densities = pd.melt(densities.reset_index(), id_vars=[dd1_id], value_name="{} Relatedness".format(measure))
+    densities = pd.melt(densities.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
 
     densities["pivot"] = densities[dd1_id].astype(str) + "_" + densities[dd2_id].astype(str)
 
@@ -208,6 +209,9 @@ def _relatedness():
     densities = densities.drop(columns=["pivot"])
 
     densities = _filter(densities, [dd1, dd2])
+
+    if "top_relatedness" in params:
+        densities = densities.sort_values(by=relatedness_measure, ascending=False).head(int(params["top_relatedness"]))
 
     _output(densities)
 
