@@ -81,7 +81,68 @@ Coming soon...
 
 
 ### Regressions
- 
+
+`OLS`
+
+Regression tool based on statmodels.ols.
+Requires at least two column of values.
+Makes a regression on the first column, using as regresssors the data from the other columns.
+Returns a JSON string with the following info:
+
+
+| Summary | description |
+| - | - |
+| `Model` | Model used on the regression  |
+| `Rsquared` | R-squared of the model  |
+| `Adj. squared` | Adjusted R-squared  |
+| `F-statistic` | 	F-statistic of the fully specified model  |
+| `Log-Likelihood` | Log-likelihood of model  |
+| `AIC` | 	Akaike’s information criteria  |
+| `BIC` | 	Bayes’ information criteria.  |
+| `No. Observations` | 	Number of observations n.  |
+
+
+| Measures | description |
+| - | - |
+| `id` | Parameter estimate name  |
+| `params` | Parameter estimate value  |
+| `bse` | 	The standard errors of the parameter estimates.  |
+| `t_values` | 	t-statistic for a given parameter estimate  |
+| `p_values` | 	Two-tailed p values for the t-stats of the params  |
+| `low_cof_int` | Lower bound of the confidence interval of the parameter estimate  |
+| `upp_cof_int` | Upper bound of the confidence interval of the parameter estimate  |
+
+
+
+
+`Arima`
+
+Prediction tool based on statmodels.arima
+Integrates a function to test some combination of values in order to find the best parameters (p,d,q) for the arima model.
+Returns a JSON string with the following info:
+
+| Model_info | description |
+| - | - |
+| `args_used` | Best (p,d,q) ARIMA parameters for the data   |
+| `n_of_predictions` | User specified number of predictions  |
+| `model_info` | Model used for the fitting  |
+| `method` | Method used for loglikelihood  maximization.	  |
+| `n_observations` | description  |
+| `aic` | 	Akaike’s information criteria  |
+| `bic` | 	Bayes’ information criteria.  |
+| `hqic` | 	Hannan-Quinn information criterio  |
+| `predictions` | Prediction results for the user specified number of predictions |
+
+| params | description |
+| - | - |
+| `exog_name` | The names of the exogenous variable.  |
+| `params` | Parameter estimate value  |
+| `bse` | Standard errors of the parameter estimates  |
+| `t_values` | t-statistic for a given parameter estimate  |
+| `p_values` | The two-tailed p values for the t-stats of the params  |
+
+
+
 `Prophet`
 
 fbprophet Info
