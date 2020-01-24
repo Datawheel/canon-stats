@@ -50,7 +50,7 @@ def ols(API, params):
         "Model" : results.model.__class__.__name__,
         "Rsquared": results.rsquared,
         "Adj. squared": results.rsquared_adj,
-        "F-stadistic": results.fvalue,
+        "F-statistic": results.fvalue,
         "Prob F-statistic": results.fvalue,
         "Log-likelihood": results.llf,
         "AIC": results.aic,
