@@ -51,7 +51,7 @@ def arima(API, params):
     r = requests.get(API, params=params)
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
-    X = pd.DataFrame(df, columns=measures).set_index(df["Year"])
+    X = pd.DataFrame(df, columns=measures).set_index(df["Year"]).astype(float)
     
 
     if (params.get("pred") == None):
