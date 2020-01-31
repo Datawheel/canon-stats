@@ -14,6 +14,29 @@ API = str(sys.argv[2])
 params = json.loads(sys.argv[1])
 
 
+def _load_params():
+    """
+    Returns params for using
+    """
+    dd1, dd2, measure = params["rca"].split(",")
+    # if "alias" in params:
+    #     dd1, dd2 = params["alias"].split(",")
+
+    dd1_id = "{} ID".format(dd1)
+    dd2_id = "{} ID".format(dd2)
+
+    return dd1, dd2, dd1_id, dd2_id, measure
+
+
+def _load_alias_params():
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
+    if "alias" in params:
+        dd1, dd2 = params["alias"].split(",")
+        dd1_id = "{} ID".format(dd1)
+        dd2_id = "{} ID".format(dd2)
+
+    return dd1, dd2, dd1_id, dd2_id
+
 def _filter(df, dds):
     for dd in dds:
         filter_var = "filter_{}".format(dd)
@@ -24,23 +47,28 @@ def _filter(df, dds):
 
 
 def _load_data():
+    """
+    Requests data from tesseract endpoint, and calculates RCA index
+    """
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     _params = params.copy()
-    dd1, dd2, measure = _params["rca"].split(",")
     _params["drilldowns"] = "{},{}".format(dd1, dd2)
     _params["measures"] = measure
+
+    # Removes rca as param
     _params.pop("rca", None)
+
+    # Gets data and converts request into dataframe
     r = requests.get(API, params=_params)
     df = pd.DataFrame(r.json()["data"])
 
-    if "alias" in _params:
-        dd1, dd2 = _params["alias"].split(",")
+    dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
-    dd1_id = "{} ID".format(dd1)
-    dd2_id = "{} ID".format(dd2)
+    # Gets labels for drilldowns
+    df_labels_1 = df[[dd1, dd1_id]].drop_duplicates()
+    df_labels_2 = df[[dd2, dd2_id]].drop_duplicates()
 
-    df_labels_1 = df[["{}".format(dd1), dd1_id]].drop_duplicates()
-    df_labels_2 = df[["{}".format(dd2), dd2_id]].drop_duplicates()
-
+    # Using threshold_* param, filter rows into the dataframe
     for dd in [dd1, dd2]:
         filter_var = "threshold_{}".format(dd)
         dd_id = "{} ID".format(dd)
@@ -49,12 +77,20 @@ def _load_data():
             list_temp = df_temp[df_temp[measure] >= float(params[filter_var])][dd_id].unique()
             df = df[df[dd_id].isin(list_temp)]
 
-    df = df.pivot(index=dd1_id, columns=dd2_id, values=measure)
+    # Copies original dataframe
+    df_final = df.copy()
 
+    # Calculates RCA index
+    df = df.pivot(index=dd1_id, columns=dd2_id, values=measure)
     output = rca(df).reset_index().melt(id_vars=dd1_id, value_name="{} RCA".format(measure))
     output = df_labels_1.merge(output, on=dd1_id)
     output = df_labels_2.merge(output, on=dd2_id)
     output = _threshold(output)
+
+    # Includes parent and measure data
+    output = output.merge(df_final, on=[dd1_id, dd2_id], how="inner")
+    output = output.drop(columns=["{}_x".format(dd1), "{}_y".format(dd2)])
+    output = output.rename(columns={"{}_x".format(dd2): dd2, "{}_y".format(dd1): dd1})
 
     return output
 
@@ -63,17 +99,6 @@ def _output(df):
     print(json.dumps({
       "data": json.loads(df.to_json(orient="records"))
     }))
-
-
-def _params():
-    dd1, dd2, measure = params["rca"].split(",")
-    if "alias" in params:
-        dd1, dd2 = params["alias"].split(",")
-
-    dd1_id = "{} ID".format(dd1)
-    dd2_id = "{} ID".format(dd2)
-
-    return dd1, dd2, measure, dd1_id, dd2_id
 
 
 def _threshold(df): 
@@ -86,10 +111,12 @@ def _threshold(df):
 
 
 def _eci():
-    dd1, dd2, measure, dd1_id, dd2_id = _params()
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     df = _load_data()
+    df_copy = df.copy()
+    dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
-    df_labels = df[["{}".format(dd1), dd1_id]].drop_duplicates()
+    df_labels = df[[dd1, dd1_id]].drop_duplicates()
 
     df = df.pivot(
         index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
@@ -112,11 +139,12 @@ def _eci():
 
 
 def _opportunity_gain():
-    dd1, dd2, measure, dd1_id, dd2_id = _params()
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     df = _load_data()
+    dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
-    df_labels_1 = df[["{}".format(dd1), dd1_id]].drop_duplicates()
-    df_labels_2 = df[["{}".format(dd2), dd2_id]].drop_duplicates()
+    df_labels_1 = df[[dd1, dd1_id]].drop_duplicates()
+    df_labels_2 = df[[dd2, dd2_id]].drop_duplicates()
 
     df = df.pivot(
         index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
@@ -141,7 +169,7 @@ def _opportunity_gain():
 
 
 def _proximity():
-    dd1, dd2, measure, dd1_id, dd2_id = _params()
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     df = _load_data()
 
     df_labels = df[["{}".format(dd2), dd2_id]].drop_duplicates()
@@ -170,9 +198,12 @@ def _proximity():
     _output(df)
 
 def _rca():
-    dd1, dd2, measure, dd1_id, dd2_id = _params()
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
 
     df = _load_data()
+
+    dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+
     df = _filter(df, [dd1, dd2])
 
     _output(df)
@@ -180,39 +211,33 @@ def _rca():
 
 def _relatedness():
     df = _load_data()
-    dd1, dd2, measure, dd1_id, dd2_id = _params()
+    dd1, dd2, dd1_id, dd2_id, measure = _load_params()
+    dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+
     relatedness_measure = "{} Relatedness".format(measure)
-    rca_measure = "{} RCA".format(measure)
 
-    dd1_df = df[["{}".format(dd1), dd1_id]].drop_duplicates()
-    dd2_df = df[["{}".format(dd2), dd2_id]].drop_duplicates()
+    df_copy = df.copy()
 
-    df_rca = df.copy()
-    df_rca["pivot"] = df_rca[dd1_id].astype(str) + "_" + df_rca[dd2_id].astype(str)
-    df_rca = df_rca[["pivot", rca_measure]]
+    dd1_df = df[[dd1, dd1_id]].drop_duplicates()
+    dd2_df = df[[dd2, dd2_id]].drop_duplicates()
 
     df = df.pivot(
         index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
     ).reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
     df = df.astype(float)
 
-    densities = relatedness(df, proximity(df))
-    densities = pd.melt(densities.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
+    output = relatedness(df, proximity(df))
+    output = pd.melt(output.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
 
-    densities["pivot"] = densities[dd1_id].astype(str) + "_" + densities[dd2_id].astype(str)
-
-    densities = densities.merge(dd1_df, on=dd1_id)
-    densities = densities.merge(dd2_df, on=dd2_id)
-    densities = densities.merge(df_rca, on="pivot")
-    densities = densities.drop(columns=["pivot"])
-
-    densities = _filter(densities, [dd1, dd2])
+    output = _filter(output, [dd1, dd2])
 
     if "top_relatedness" in params:
         top = int(params["top_relatedness"])
-        densities = densities.sort_values(by=relatedness_measure, ascending=False).head(top)
+        output = output.sort_values(by=relatedness_measure, ascending=False).head(top)
 
-    _output(densities)
+    output = output.merge(df_copy, on=[dd1_id, dd2_id], how="inner")
+
+    _output(output)
 
 
 if __name__ == "__main__":
