@@ -16,19 +16,15 @@ def opportunity_gain(rcas, proximities, pci):
     # 0's this will flip all of them i.e. 1 = 0 and 0 = 1
     inverse_rcas = 1 - rcas
     
-    # convert PCIs to a matrix of repeated values
-    pci_matrix = pd.DataFrame(pci.values.reshape((1, len(pci))), columns=pci.index)
-    pci_matrix = pci_matrix.reindex(index=rcas.columns, method="ffill") # forward fill
-
     # here we now have the middle part of the equation
-    middle = inverse_rcas.dot(pci_matrix)
+    middle = inverse_rcas.multiply(pci)
 
     # get the relatedness with the backwards bizzaro RCAs
-    dcp = relatedness(1-rcas, proximities)
+    dcp = relatedness(inverse_rcas, proximities)
     # now get the inverse
-    dcp = 1-dcp
+    dcp = 1 - dcp
     # we now have the right-half of the equation
-    right = dcp.dot(pci_matrix)
+    right = dcp.multiply(pci)
 
     # matrix multiplication with proximities ratio
     opp_gain = middle.dot(prox_ratio) - right

@@ -143,8 +143,7 @@ def _opportunity_gain():
     df = _load_data()
     dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
-    df_labels_1 = df[[dd1, dd1_id]].drop_duplicates()
-    df_labels_2 = df[[dd2, dd2_id]].drop_duplicates()
+    df_copy = df.copy()
 
     df = df.pivot(
         index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
@@ -160,9 +159,8 @@ def _opportunity_gain():
         id_vars=[dd1_id], 
         value_name="{} Opportunity Gain".format(measure)
     )
-    output = df_labels_1.merge(output, on=dd1_id)
-    output = df_labels_2.merge(output, on=dd2_id)
 
+    output = output.merge(df_copy, on=[dd1_id, dd2_id], how="inner")
     output = _filter(output, [dd1, dd2])
 
     _output(output)
@@ -217,9 +215,6 @@ def _relatedness():
     relatedness_measure = "{} Relatedness".format(measure)
 
     df_copy = df.copy()
-
-    dd1_df = df[[dd1, dd1_id]].drop_duplicates()
-    dd2_df = df[[dd2, dd2_id]].drop_duplicates()
 
     df = df.pivot(
         index=dd1_id, columns=dd2_id, values="{} RCA".format(measure)
