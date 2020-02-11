@@ -103,7 +103,7 @@ def arima(API, params):
             results = model.fit(disp=0)
             predict = results.predict(start=1, end=len(df_temp))
 
-            forecast,strderr,conf_int = results.forecast(steps=n_pred)
+            forecast, strderr, conf_int = results.forecast(steps=n_pred)
 
             # Predicted values in sample
             predict_df = pd.DataFrame({measures[0]: df_temp[measures].values.reshape(len(df_temp[measures].values),), measures[0] + ' Prediction': predict,
