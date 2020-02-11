@@ -30,7 +30,7 @@ def _logit():
 
 def _arima():
     data = arima(API, params)
-    print(json.dumps({"data": data},ignore_nan=True))
+    print(json.dumps({"data": data}, ignore_nan=True))
 
 def _probit():
     data = probit(API, params)
@@ -38,7 +38,7 @@ def _probit():
 
 def _prophet():
     data = prophet(API, params)
-    print(json.dumps({"data": data},ignore_nan=True))
+    print(json.dumps({"data": data}, ignore_nan=True))
 
 if __name__ == "__main__":
     function_name = str(sys.argv[3])

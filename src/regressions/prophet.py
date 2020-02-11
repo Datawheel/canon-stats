@@ -76,14 +76,14 @@ def pred(df, drilldowns, measures, seasonality_mode, changepoint_prior_scale, ch
 
         #Changes values forecasted names into parameter name used for regression
         names = {
-            'ds': 'Date',
-            'y' : measures[0],
-            'yhat': measures[0] + ' Prediction',
-            'yhat_upper': measures[0] + ' Upper Bound',
-            'yhat_lower': measures[0] + ' Lower Bound',
-            'trend': measures[0] + ' Trend',
-            'trend_lower': measures[0] + ' Lower Trend',
-            'trend_upper': measures[0] + ' Upper Trend'    
+            "ds": "Date",
+            "y" : measures[0],
+            "yhat": measures[0] + " Prediction",
+            "yhat_upper": measures[0] + " Upper Bound",
+            "yhat_lower": measures[0] + " Lower Bound",
+            "trend": measures[0] + " Trend",
+            "trend_lower": measures[0] + " Lower Trend",
+            "trend_upper": measures[0] + " Upper Trend"    
         }
 
     return (values, train_dataset, names)
@@ -91,17 +91,17 @@ def pred(df, drilldowns, measures, seasonality_mode, changepoint_prior_scale, ch
 
 def prophet(API, params):
     r = requests.get(API, params=params)
-    measures = params['measures'].split(',')
+    measures = params["measures"].split(",")
     measures = [measures[0]]
-    df = pd.DataFrame(r.json()['data']).dropna()
+    df = pd.DataFrame(r.json()["data"]).dropna()
     df[measures] = df[measures].astype(float)  
     drilldowns = params['drilldowns'].split(',')
     
     default_params = {
-        'seasonality_mode' : 'multiplicative',
-        'changepoint_prior_scale' : 0.05,
-        'changepoint_range' : 0.95,
-        'periods' : 10
+        "seasonality_mode" : "multiplicative",
+        "changepoint_prior_scale" : 0.05,
+        "changepoint_range" : 0.95,
+        "periods" : 10
     }
 
     for item in default_params.keys():
@@ -152,4 +152,4 @@ def prophet(API, params):
 
 if __name__ == '__main__':
     #prophet(sys.argv[1])
-    prophet('https://api.oec.world/tesseract/data', {'drilldowns':'Year,Section','measures':'Trade Value','cube':'trade_s_jpn_m_hs','parents':'true','Section':'1,2,3'})
+    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Year,Section","measures":"Trade Value","cube":"trade_s_jpn_m_hs","parents":"true","Section":"1,2,3"})
