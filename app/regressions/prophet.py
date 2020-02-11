@@ -38,23 +38,20 @@ class suppress_stdout_stderr(object):
             os.close(fd)
 
 
-def pred(df, drilldowns, measures):
+def pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,changepoint_range,periods):
+    
 
-    default_params = {
-        "changepoint_prior_scale" : 0.05,
-        "changepoint_range" : 0.95,
-        "periods" : 10,
-        "seasonality_mode" : "multiplicative"
-    }
 
-    changepoint_prior_scale = float(default_params.get("changepoint_prior_scale"))
-    changepoint_range = float(default_params.get("changepoint_range"))
-    periods = int(default_params.get("periods"))
-    seasonality_mode = default_params.get("seasonality_mode")
+    
+
+    months = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
+    
 
     #Change format for date
     if "Month" in drilldowns[0]:
-        X = pd.to_datetime(df[["Year", "Month"]], format="%Y%B")
+        df["Month"] = df["Month"].map(months)
+        df['Date'] = pd.to_datetime(df[['Year', 'Month']].assign(DAY=1))
+        X = df["Date"]
         time_param = "%Y-%m"
     
     elif "Year" in drilldowns[0]: 
@@ -63,7 +60,7 @@ def pred(df, drilldowns, measures):
     
     freq = drilldowns[0][0]
     df_temp = pd.DataFrame(X)
-    
+
     # Rename time column to "Date", in case it bugs
     for item in [0, "Year", "Month", "Days"]:
             df_temp = pd.DataFrame(df_temp).rename(columns={item: "Date"})
@@ -72,8 +69,11 @@ def pred(df, drilldowns, measures):
     # Prepares dataset for prophet
     df2 = pd.DataFrame(df[measures[0]])
     merged = df_temp.merge(df2, left_index=True, right_index=True)
+
+    
     train_dataset = pd.DataFrame(merged[["Date", measures[0]]]).rename(columns={"Date": "ds", measures[0]: "y"})
-  
+    
+
     
     with suppress_stdout_stderr():
         
@@ -89,14 +89,14 @@ def pred(df, drilldowns, measures):
 
         #Changes values forecasted names into parameter name used for regression
         names = {
-            "ds": drilldowns[0],
+            "ds": "Date",
             "y" : measures[0],
             "yhat": measures[0] + " Prediction",
             "yhat_upper": measures[0] + " Upper Bound",
             "yhat_lower": measures[0] + " Lower Bound",
             "trend": measures[0] + " Trend",
             "trend_lower": measures[0] + " Lower Trend",
-            "trend_upper": measures[0] + " upper Trend"    
+            "trend_upper": measures[0] + " Upper Trend"    
         }
 
     return (values, train_dataset, names)
@@ -105,35 +105,85 @@ def pred(df, drilldowns, measures):
 def prophet(API, params):
 
     r = requests.get(API, params=params)
-    df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")
+    measures = [measures[0]]
+    df = pd.DataFrame(r.json()["data"]).dropna()
     df[measures] = df[measures].astype(float)  
     drilldowns = params["drilldowns"].split(",")
     
-    data = pd.DataFrame()
+    default_params = {
+        "seasonality_mode" : "multiplicative",
+        "changepoint_prior_scale" : 0.05,
+        "changepoint_range" : 0.95,
+        "periods" : 10
+    }
+
+    for item in default_params.keys():
+        if item in params:
+            default_params[item] = params[item]
+    
+    seasonality_mode = default_params.get("seasonality_mode")
+    changepoint_prior_scale = float(default_params.get("changepoint_prior_scale"))
+    changepoint_range = float(default_params.get("changepoint_range"))
+    periods = int(default_params.get("periods"))
+
+    
+    data2 = pd.DataFrame()
+ 
+
     if len(drilldowns) > 1:
         items = df[drilldowns[1]].unique()
-        filters = params[drilldowns[1]].split(",")
+       
         for item in items:
             df_temp = df.loc[df[drilldowns[1]] == item]
-            values, train_dataset, names = pred(df_temp, drilldowns, measures)
+            
+            id_val = df_temp[drilldowns[1] + " "+ "ID"].loc[df_temp[drilldowns[1]]==item]
+            
+            values, train_dataset, names = pred(df_temp, drilldowns, measures,seasonality_mode,changepoint_prior_scale,changepoint_range,periods)
+            
             values[drilldowns[1]] = item
-            values[drilldowns[1] + " "+ "ID"] = int(filters[list(df["Section"].unique()).index(item)])
+            values[drilldowns[1] + " "+ "ID"] = id_val.values[0]
             #creates a dataframe with predicted data
-            df_pred = pd.DataFrame(values)
-            #adds real values into dataframe
-            df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
-            data = pd.concat([data, df_final], ignore_index=True, sort =False)
-    else: 
-        values, train_dataset, names = pred(df, drilldowns, measures)
-        df_pred = pd.DataFrame(values)
-        df_final = pd.merge(train_dataset, df_pred, on="ds", how="outer").fillna("null").rename(columns=names)
-        data = pd.concat([data, df_final], ignore_index=True, sort=False)
+            
+            df_pred = pd.DataFrame(values).rename(columns=names)
+            
+            true_values = df_temp[measures].reset_index()
 
+            df_pred = pd.concat([df_pred,true_values[measures]], axis=1)
+            
+            #adds real values into dataframe
+            
+            
+            data2 = pd.concat([data2, df_pred], ignore_index=True, sort =False)
+           
+        
+        #data2= data2.merge(data, how="outer", left_index=True, right_index=True)   
+       
+    
+    else: 
+
+        values, train_dataset, names = pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,changepoint_range,periods)
+       
+        true_values = df[measures].reset_index()
+           
+        df_pred = pd.DataFrame(values).rename(columns=names)   
+        df_pred = pd.concat([df_pred,true_values[measures]], axis=1)
+
+        
+        
+        data2= data2.merge(df_pred, how="outer", left_index=True, right_index=True)
+
+   
     return {
-        "predictions" : data.to_dict(orient = "records"),
+        "predictions" : data2.to_dict(orient = "records"),
+        "prophet_args" : [
+            {"seasonality_mode" : seasonality_mode},
+            {"changepoint_prior_scale" : changepoint_prior_scale},
+            {"changepoint_range" : changepoint_range},
+            {"periods" : periods}
+        ]
     }
 
 if __name__ == "__main__":
     #prophet(sys.argv[1])
-    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Year","measures":"Trade Value","cube":"trade_i_baci_a_92"})
+    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Year,Section","measures":"Trade Value","cube":"trade_s_jpn_m_hs","parents":"true","Section":"1,2,3"})
