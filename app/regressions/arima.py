@@ -29,7 +29,7 @@ def evaluate_arima_model(X, arima_order):
     error = mean_squared_error(test, predictions)
     return error
 
-
+  
 # evaluate combinations of p, d and q values for an ARIMA model
 def evaluate_models(dataset, p_values, d_values, q_values):
     dataset = dataset

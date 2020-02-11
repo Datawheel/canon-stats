@@ -178,7 +178,7 @@ fbprophet Info
 Uses fbprophet to make predictions for a time period.
 fbprophet admits two columns estrictly named "ds" which stands for datestamp and "y" where all the values are stored.
 Additional information can be found on the original paper: https://peerj.com/preprints/3190/
-
+ 
 
 IMPORTANT!!! after a fbprophet update, a "cannot import easter from holidays" message appear, that is fixed installing holidays version 0.9.12
 

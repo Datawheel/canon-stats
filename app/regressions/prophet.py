@@ -174,7 +174,7 @@ def prophet(API, params):
         data2= data2.merge(df_pred, how="outer", left_index=True, right_index=True)
 
    
-    return {
+    return { 
         "predictions" : data2.to_dict(orient = "records"),
         "prophet_args" : [
             {"seasonality_mode" : seasonality_mode},
