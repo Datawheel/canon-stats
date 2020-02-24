@@ -27,8 +27,7 @@ module.exports = function(app) {
           return res.json(dataResult);
         }
         catch (e) {
-          console.error(`\nrespString:\n${e}`);
-          return res.json({error: e});
+          return res.json({error: e.toString()});
         }
       });
     });
@@ -54,8 +53,7 @@ module.exports = function(app) {
         return res.json(dataResult);
       }
       catch (e) {
-        console.error(`\nrespString:\n${e}`);
-        return res.json({error: e});
+        return res.json({error: e.toString()});
       }
     });
   });

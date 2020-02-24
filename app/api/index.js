@@ -30,8 +30,7 @@ const ENGINE = process.env.CANON_STATS_PYTHON_ENGINE || "python3";
         return res.json(dataResult);
       }
       catch (e) {
-        console.error(`\nrespString:\n${e}`);
-        return res.json({error: e});
+        return res.json({error: e.toString()});
       }
     });
   });
@@ -57,8 +56,7 @@ app.get(`${BASE_URL}/network`, (req, res) => {
       return res.json(dataResult);
     }
     catch (e) {
-      console.error(`\nrespString:\n${e}`);
-      return res.json({error: e});
+      return res.json({error: e.toString()});
     }
   });
 });
@@ -86,8 +84,7 @@ app.get(`${BASE_URL}/network`, (req, res) => {
         return res.json(dataResult);
       }
       catch (e) {
-        console.error(`\nrespString:\n${e}`);
-        return res.json({error: e});
+        return res.json({error: e.toString()});
       }
     });
   });
