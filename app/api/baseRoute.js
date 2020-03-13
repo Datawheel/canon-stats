@@ -1,8 +1,8 @@
 const express = require("express");
 const app = express(),
+      jwt = require("jsonwebtoken"),
       path = require("path");
 
-const {getApiToken} = require("./apiHelpers");
 const {
   CANON_PORT,
   CANON_STATS_API,
@@ -23,6 +23,19 @@ const options = {
   "network": ["network"],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"]
 };
+
+const getApiToken = (headers, user) => 
+  headers["x-tesseract-jwt-token"] || 
+  jwt.sign(
+    {
+      auth_level: user ? user.role : 0,
+      sub: user ? user.id : "localhost",
+      status: "valid"
+    },
+    OLAP_PROXY_SECRET,
+    {expiresIn: "30m"}
+  );
+
 
 module.exports = function(app) {
   Object.entries(options).forEach(d => {
