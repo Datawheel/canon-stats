@@ -9,7 +9,7 @@ from complexity.proximity import proximity
 
 API = str(sys.argv[2])
 params = json.loads(sys.argv[1])
-
+headers = sys.argv[4]
 
 def network():
     dd1, dd2, measure = params["rca"].split(",")
@@ -19,7 +19,7 @@ def network():
     dd1_id = "{} ID".format(dd1)
     dd2_id = "{} ID".format(dd2)
 
-    r = requests.get(API, params=params)
+    r = requests.get(API, params=params, headers=json.loads(headers))
     df = pd.DataFrame(r.json()["data"])
 
     df = df.pivot(
