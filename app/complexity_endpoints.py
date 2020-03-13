@@ -12,6 +12,7 @@ from complexity.relatedness import relatedness
 
 API = str(sys.argv[2])
 params = json.loads(sys.argv[1])
+headers = sys.argv[4]
 
 
 def _load_params():
@@ -59,7 +60,10 @@ def _load_data():
     _params.pop("rca", None)
 
     # Gets data and converts request into dataframe
-    r = requests.get(API, params=_params)
+    r = requests.get(API, params=_params, headers=json.loads(headers))
+    if (r.status_code != 200):
+        raise Exception(r.text)
+
     df = pd.DataFrame(r.json()["data"])
 
     dd1, dd2, dd1_id, dd2_id = _load_alias_params()
@@ -102,6 +106,7 @@ def _output(df):
 
 
 def _threshold(df): 
+    dd1, dd2, measure = params["rca"].split(",")
     if "threshold" in params:
         df["pivot"] = df[df[measure] > int(params["threshold"])]
         df = df[df["pivot"] == True].copy()
@@ -150,7 +155,7 @@ def _opportunity_gain():
     ).reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
     rcas = df.astype(float)
 
-    iterations = int(params["iterations"]) if "iterations" in params else 20
+    iterations = int(params["iterations"]) if "iterations" in params else 21
     eci, pci = complexity(rcas, iterations)
 
     output = opportunity_gain(rcas, proximity(rcas), pci)
