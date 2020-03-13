@@ -9,6 +9,7 @@ from regressions.prophet import prophet
 
 API = str(sys.argv[2]) 
 params = json.loads(sys.argv[1])
+headers = sys.argv[4]
 
 
 default_params = {
@@ -21,23 +22,23 @@ default_params = {
 }
 
 def _ols():
-    data = ols(API, params)
+    data = ols(API, params, headers)
     print(json.dumps({"data": data}))
 
 def _logit():
-    data = logit(API, params)
+    data = logit(API, params, headers)
     print(json.dumps({"data": data}))
 
 def _arima():
-    data = arima(API, params)
+    data = arima(API, params, headers)
     print(json.dumps({"data": data}, ignore_nan=True))
 
 def _probit():
-    data = probit(API, params)
+    data = probit(API, params, headers)
     print(json.dumps({"data": data}))
 
 def _prophet():
-    data = prophet(API, params)
+    data = prophet(API, params, headers)
     print(json.dumps({"data": data}, ignore_nan=True))
 
 if __name__ == "__main__":

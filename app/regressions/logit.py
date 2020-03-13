@@ -7,9 +7,9 @@ import sys
 
 from functools import reduce
 
-def logit(API, params):
+def logit(API, params, headers):
 
-    r = requests.get(API, params=params)
+    r = requests.get(API, params=params, headers=json.loads(headers))
 
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")

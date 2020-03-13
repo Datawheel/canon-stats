@@ -49,8 +49,8 @@ def evaluate_models(dataset, p_values, d_values, q_values):
     return (best_cfg)
 
 
-def arima(API, params):
-    r = requests.get(API, params=params) 
+def arima(API, params, headers):
+    r = requests.get(API, params=params, headers=json.loads(headers)) 
     measures = params['measures'].split(',')
     drilldowns = params['drilldowns'].split(',')
 

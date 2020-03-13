@@ -7,9 +7,9 @@ import sys
 
 from functools import reduce
 
-def probit(API, params):
+def probit(API, params, headers):
 
-    r = requests.get(API, params=params)
+    r = requests.get(API, params=params, headers=json.loads(headers))
 
     df = pd.DataFrame(r.json()["data"])
     measures = params["measures"].split(",")

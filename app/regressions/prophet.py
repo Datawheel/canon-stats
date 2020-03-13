@@ -103,9 +103,9 @@ def pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,chang
     return (values, train_dataset, names)
 
 
-def prophet(API, params):
+def prophet(API, params, headers):
 
-    r = requests.get(API, params=params)
+    r = requests.get(API, params=params, headers=json.loads(headers))
     measures = params["measures"].split(",")
     measures = [measures[0]]
     df = pd.DataFrame(r.json()["data"]).dropna()
