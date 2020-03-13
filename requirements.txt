@@ -94,3 +94,4 @@ Werkzeug==0.16.0
 widgetsnbextension==3.5.1
 wrapt==1.11.2
 zipp==1.0.0
+simplejson
