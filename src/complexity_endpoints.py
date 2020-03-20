@@ -334,9 +334,9 @@ class Complexity:
         output = relatedness(df_copy, proximity(df_copy))
         output = pd.melt(output.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
 
-        output = self.transform_step(df, [dd1, dd2], relatedness_measure)
+        output = self.transform_step(output, [dd1, dd2], relatedness_measure)
 
-        output = output.merge(df_copy, on=[dd1_id, dd2_id], how="inner")
+        output = output.merge(df, on=[dd1_id, dd2_id], how="inner")
 
         self.base.to_output(output)
 
