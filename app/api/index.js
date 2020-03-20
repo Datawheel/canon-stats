@@ -28,8 +28,8 @@ const getApiToken = (headers, user) =>
   headers["x-tesseract-jwt-token"] || 
   jwt.sign(
     {
-      auth_level: user ? user.role : 0,
-      sub: user ? user.id : "localhost",
+      auth_level: 10,
+      sub: "server",
       status: "valid"
     },
     OLAP_PROXY_SECRET,
