@@ -66,6 +66,7 @@ class Complexity:
         self.dd2 = dd2
         self.dd2_id = dd2_id
         self.eci_measure = "{} ECI".format(measure)
+        self.endpoint = str(sys.argv[3])
         self.iterations = int(params.get("iterations")) if "iterations" in params else 20
         self.measure = measure
         self.method = params.get("method")
@@ -124,15 +125,17 @@ class Complexity:
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
 
-            dd1_right_id = "{} ID".format(dd1_right)
-            dd2_right_id = "{} ID".format(dd2_right)
+            dd1_right_id = get_dd_id(dd1_right)
+            dd2_right_id = get_dd_id(dd2_right)
 
             q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
+
             row_sums = q.sum(axis=0)
             total_sum = q.sum().sum()
-            rca_denominator = row_sums / total_sum
+            rca_denominator = np.divide(row_sums, total_sum)
 
             rca_subnat = subnat_rca_numerator / rca_denominator
+
             df_rca = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
             df_rca = pd.melt(df_rca.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
 
@@ -203,7 +206,7 @@ class Complexity:
         return df
 
 
-    def _eci(self):
+    def _complexity(self):
         df = self.load_step()
         df_copy = df.copy()
         dd1 = self.dd1
@@ -211,9 +214,15 @@ class Complexity:
         dd2 = self.dd2
         dd2_id = self.dd2_id
 
-        df_labels = df[[dd1, dd1_id]].drop_duplicates()
         rca_measure = self.rca_measure
         eci_measure = self.eci_measure
+        pci_measure = self.pci_measure
+
+        complexity_measure = eci_measure if self.endpoint == "eci" else pci_measure
+        complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
+        complexity_dd = dd1 if self.endpoint == "eci" else dd2
+
+        df_labels = df[[complexity_dd, complexity_dd_id]].drop_duplicates()
 
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 
@@ -241,17 +250,19 @@ class Complexity:
             df_right = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
 
             eci, pci = complexity(rca(df_right), iterations)
-            df_pci = pd.DataFrame(pci).rename(columns={0: eci_measure}).reset_index()
+            df_pci = pd.DataFrame(pci).rename(columns={0: complexity_measure}).reset_index()
             df_pci = df_pci.merge(df_copy, on=dd2_id)
-            results = df_pci[df_pci[rca_measure] >= 1].groupby([dd1_id, dd1]).mean().reset_index()
-            results = results[[dd1_id, dd1, eci_measure]]
+            dds = [complexity_dd_id, complexity_dd]
+            results = df_pci[df_pci[rca_measure] >= 1].groupby(dds).mean().reset_index()
+            results = results[dds + [complexity_measure]]
 
         else:
             eci, pci = complexity(df, iterations)
-            results = pd.DataFrame(eci).rename(columns={0: eci_measure}).reset_index()
-            results = df_labels.merge(results, on=dd1_id)
+            complexity_data = eci if self.endpoint == "eci" else pci
+            results = pd.DataFrame(complexity_data).rename(columns={0: complexity_measure}).reset_index()
+            results = df_labels.merge(results, on=complexity_dd_id)
 
-        results = self.transform_step(results, [dd1, dd2], eci_measure)
+        results = self.transform_step(results, [dd1, dd2], complexity_measure)
 
         self.base.to_output(results)
 
@@ -343,4 +354,5 @@ class Complexity:
 
 if __name__ == "__main__":
     name = str(sys.argv[3])
-    Complexity(name).get()
+    full_name = "complexity" if name in ["eci", "pci"] else name
+    Complexity(full_name).get()

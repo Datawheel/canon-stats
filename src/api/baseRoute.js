@@ -19,7 +19,7 @@ const BASE_URL = CANON_STATS_BASE_URL || "/api/stats";
 const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
 
 const options = {
-  "complexity": ["eci", "rca", "proximity", "relatedness", "opportunity_gain"],
+  "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
   "network": ["network"],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"]
 };
