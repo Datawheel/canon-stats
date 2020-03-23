@@ -1,30 +1,40 @@
+# Canon-Stats: Library for Economic Complexity and Statistics calculations "on the fly"
+
+Canon-stats is a node-js library, whose purpose is to simplify the labor of doing complex calculations in the front-end. It integrates with [@datawheel/canon-core](https://github.com/Datawheel/canon) and [tesseract-olap/tesseract](https://github.com/tesseract-olap/tesseract). Both are open source technologies developed and supported by Datawheel.
+
 ## Installation
+
+The library will work only in repositories that it has installed `@datawheel/canon-core` previously.
 
 ```
 npm i https://github.com/Datawheel/canon-stats
 ```
 
-Also, the environment variable `CANON_STATS_API` must be set, where the value is a tesseract instance URL.
+The environment variable `CANON_STATS_API` must be set, where the value is a tesseract instance URL.
 
 ```
-export CANON_STATS_API=https://api.datamexico.org/tesseract/
+export CANON_STATS_API=https://api.datamexico.org/tesseract
 ```
 
-Once the package has been installed on any site using @datawheel/canon-core, the canon core server will automatically hook up the necessary cache and api routes for the stats endpoints.
+Once the package has been installed on any site using `@datawheel/canon-core`, the canon core server will automatically hook up the necessary cache and api routes for the stats endpoints.
 
-### Python environment
 
+## Python environment
+
+Canon-stats requires that the server has previously installed python.
+
+We suggest in local environment to create a virtual environment.
 ```
-pip3 install virtualenv
+pip install virtualenv
 virtualenv venv
 source ./venv/bin/activate
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 
 ## Usage
 
-By default, stats exposes an endpoint at `/api/stats/<endpoint>` that will return JSON based on a series of query arguments. As simple example, using the Data México cube, this endpoint would return ECI data for Mexico states:
+By default, stats exposes an endpoint at `/api/stats/<endpoint>` that will return JSON based on a series of query arguments. As simple example, using the Data México API, `api/stats/eci` returns ECI values for at state level:
 
 ```
 /api/stats/eci?cube=inegi_economic_census&rca=State,Sector,Total Gross Production&Year=2014
@@ -53,15 +63,15 @@ By default, stats exposes an endpoint at `/api/stats/<endpoint>` that will retur
 }
 ```
 
-Also, you can customize the endpoint URL, using the environment variable `CANON_STATS_BASE_URL`.
+You can customize the endpoint URL, using the environment variable `CANON_STATS_BASE_URL`.
 
 ```
-export CANON_STATS_BASE_URL=/api/customStats
+export CANON_STATS_BASE_URL=/api/mystats
 ```
 
 The endpoint would be:
 ```
-/api/customStats/eci?cube=inegi_economic_census&rca=State,Sector,Total Gross Production&Year=2014
+/api/mystats/eci?cube=inegi_economic_census&rca=State,Sector,Total Gross Production&Year=2014
 ```
 
 ## Endpoints availables
@@ -70,10 +80,19 @@ The stats module includes endpoints for doing different calculations.
 
 ### Complexity
 
-| variable | description | default |
-| - | - | - |
-| eci | Calculates Economic Complexity Index | |
-| relatedness | Calculates Relatedness  |  |
+| variable | description |
+| - | - |
+| eci | Calculates Economic Complexity Index (Hidalgo & Haussmann, 2009) |
+| rca | Calculates Balassa (1964) index |
+| proximity |  |
+| opportunity_gain |  |
+| relatedness |  |
+
+
+#### Query params
+
+* options: Let's customize the output of the endpoint. 
+* method: Value accepted: "subnational".
 
 ### Networks
 
