@@ -17,7 +17,7 @@ headers = sys.argv[4]
 
 
 def pivot_data(df, index, columns, values):
-    return df.pivot(index, columns, values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
+    return pd.pivot_table(df, index=[index], columns=[columns], values=[values]).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
 
 def get_dd_id(dd):
     return "{} ID".format(dd)
@@ -104,6 +104,8 @@ class Complexity:
                 "Year": _params.get("Year")
             }
             df_subnat = self.base.get_data(paramsLeft)
+
+            # return self.base.to_output(pd.DataFrame(df_subnat[dd1_id]).value_counts())
             p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
 
             col_sums = p.sum(axis=1)
@@ -244,8 +246,8 @@ class Complexity:
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
 
-            dd1_right_id = "{} ID".format(dd1_right)
-            dd2_right_id = "{} ID".format(dd2_right)
+            dd1_right_id = get_dd_id(dd1_right)
+            dd2_right_id = get_dd_id(dd2_right)
 
             df_right = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
 
