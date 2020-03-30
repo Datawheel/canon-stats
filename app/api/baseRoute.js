@@ -82,4 +82,8 @@ module.exports = function(app) {
     });
   });
 
+  app.get(`${BASE_URL}/version`, (req, res) => {
+    return res.json({endpoints: options, version: "0.2.2"})
+  });
+
 }

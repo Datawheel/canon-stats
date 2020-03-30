@@ -17,7 +17,7 @@ headers = sys.argv[4]
 
 
 def pivot_data(df, index, columns, values):
-    return pd.pivot_table(df, index=[index], columns=[columns], values=[values]).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
+    return pd.pivot_table(df, index=[index], columns=[columns], values=values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
 
 def get_dd_id(dd):
     return "{} ID".format(dd)
@@ -94,8 +94,7 @@ class Complexity:
         _params.pop("rca", None)
 
         # Gets data and converts request into dataframe
-        method = _params.get("method")
-        if method == "subnational":
+        if self.method in ["subnational", "relatedness"]:
             paramsLeft = {
                 "cube": _params.get("cube"),
                 "drilldowns": drilldowns,
@@ -138,19 +137,25 @@ class Complexity:
 
             rca_subnat = subnat_rca_numerator / rca_denominator
 
-            df_rca = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
-            df_rca = pd.melt(df_rca.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
+            df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
+            df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
 
-            df_rca = df_rca.merge(df_subnat, on=[dd1_id, dd2_id])
-            return df_rca
+            df_rca_subnat = df_rca_subnat.merge(df_subnat, on=[dd1_id, dd2_id])
+            if self.method == "subnational":
+                return df_rca_subnat
+            elif self.method == "relatedness":
+                # Copies original dataframe
+                df_final = df_right.copy()
+                # Calculates RCA index
+                df_final = pivot_data(df_final, dd1_right_id, dd2_right_id, measure)
+                output = rca(df_final)
+                return df_rca_subnat, output
+            else:
+                return pd.DataFrame([])
         else:
             df = self.base.get_data(_params)
 
             dd1, dd2, dd1_id, dd2_id = _load_alias_params()
-
-            # Gets labels for drilldowns
-            df_labels_1 = df[[dd1, dd1_id]].drop_duplicates()
-            df_labels_2 = df[[dd2, dd2_id]].drop_duplicates()
 
             # Using threshold_* param, filter rows into the dataframe
             for dd in [dd1, dd2]:
@@ -165,18 +170,13 @@ class Complexity:
             df_final = df.copy()
 
             # Calculates RCA index
-            df = df.pivot(index=dd1_id, columns=dd2_id, values=measure)
+            df = pivot_data(df, dd1_id, dd2_id, measure)
             output = rca(df).reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
-            output = df_labels_1.merge(output, on=dd1_id)
-            output = df_labels_2.merge(output, on=dd2_id)
-            output = _threshold(output)
-
-            # Includes parent and measure data
             output = output.merge(df_final, on=[dd1_id, dd2_id], how="inner")
-            output = output.drop(columns=["{}_x".format(dd1), "{}_y".format(dd2)])
-            output = output.rename(columns={"{}_x".format(dd2): dd2, "{}_y".format(dd1): dd1})
 
+            output = _threshold(output)
             return output
+
 
     def get(self):
         def func_not_found():
@@ -193,7 +193,7 @@ class Complexity:
 
         for dd in dds:
             filter_var = "filter_{}".format(dd)
-            filter_id = "{} ID".format(dd)
+            filter_id = get_dd_id(dd)
             if filter_var in params and filter_id in list(df):
                 df = df[df[filter_id].astype(str) == str(params[filter_var])]
 
@@ -333,7 +333,11 @@ class Complexity:
 
 
     def _relatedness(self):
-        df = self.load_step()
+        if self.method == "relatedness":
+            df, df_country = self.load_step()
+        else: 
+            df = self.load_step()
+
         dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
@@ -344,11 +348,15 @@ class Complexity:
         df_copy = df.copy()
         df_copy = pivot_data(df_copy, dd1_id, dd2_id, rca_measure)
 
-        output = relatedness(df_copy, proximity(df_copy))
+        if self.method == "relatedness":
+            phi = proximity(df_country)
+            output = relatedness(df_copy.reindex(columns=list(phi)).fillna(0), phi)
+        else: 
+            output = relatedness(df_copy, proximity(df_copy))
+        
         output = pd.melt(output.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
 
         output = self.transform_step(output, [dd1, dd2], relatedness_measure)
-
         output = output.merge(df, on=[dd1_id, dd2_id], how="inner")
 
         self.base.to_output(output)

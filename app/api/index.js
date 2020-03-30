@@ -80,6 +80,10 @@ Object.entries(options).forEach(d => {
   });
 });
 
+app.get(`${BASE_URL}/version`, (req, res) => {
+  return res.json({endpoints: options, version: "0.2.2"})
+});
+
 
 app.listen(port, () => {
   console.log(`Listening to requests on http://localhost:${port}`);
