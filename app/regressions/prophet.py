@@ -45,7 +45,7 @@ def pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,chang
     
 
     months = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
-    
+    quarters = {1:"03",2:"06",3:"09",4:"12"}
 
     #Change format for date
     if "Month" in drilldowns[0]:
@@ -59,11 +59,20 @@ def pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,chang
         X = X + pd.offsets.YearEnd(0) 
         time_param = "%Y"
     
+    elif "Quarter" in drilldowns[0]: 
+        #X = df[['Year', 'Quarter']].apply(lambda x: ''.join(x), axis=1)
+        df["Quarter ID"]= df["Quarter ID"].map(quarters)
+        X =  df["Year"].astype(str)+df["Quarter ID"].astype(str)
+        X = pd.to_datetime(X, format="%Y%m")
+        periods=periods+1
+        time_param = "%Y-%m"
+        print(X)
+
     freq = drilldowns[0][0]
     df_temp = pd.DataFrame(X)
 
     # Rename time column to "Date", in case it bugs
-    for item in [0, "Year", "Month", "Days"]:
+    for item in [0, "Year", "Month", "Days","Quarter"]:
             df_temp = pd.DataFrame(df_temp).rename(columns={item: "Date"})
     
     
@@ -111,6 +120,7 @@ def prophet(API, params, headers):
     df = pd.DataFrame(r.json()["data"]).dropna()
     df[measures] = df[measures].astype(float)  
     drilldowns = params["drilldowns"].split(",")
+    
     
     default_params = {
         "seasonality_mode" : "multiplicative",
@@ -175,6 +185,17 @@ def prophet(API, params, headers):
         data2= data2.merge(df_pred, how="outer", left_index=True, right_index=True)
 
     
+    data2[(data2["Trade Value Prediction"] < 0)] = 0
+    data2[(data2["Trade Value Lower Bound"] < 0)] = 0
+    data2[(data2["Trade Value Upper Bound"] < 0)] = 0
+    data2[(data2["Trade Value Lower Trend"] < 0)] = 0
+    data2[(data2["Trade Value Upper Trend"] < 0)] = 0
+    
+    
+    delete_row = data2[data2["Date"]==0].index
+    data2 = data2.drop(delete_row)
+    
+
     return { 
         "predictions" : data2.to_dict(orient = "records"),
         "prophet_args" : [
@@ -187,4 +208,4 @@ def prophet(API, params, headers):
 
 if __name__ == "__main__":
     #prophet(sys.argv[1])
-    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Year,Section","measures":"Trade Value","cube":"trade_s_jpn_m_hs","parents":"true","Section":"1,2,3"})
+    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Quarter","measures":"Trade Value","cube":"trade_i_comtrade_m_hs","parents":"true"},"{}")
