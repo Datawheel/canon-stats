@@ -7,7 +7,9 @@ from regressions.arima import arima
 from regressions.probit import probit
 from regressions.prophet import prophet
 
-API = str(sys.argv[2]) 
+from base import BaseClass
+
+API = str(sys.argv[2])
 params = json.loads(sys.argv[1])
 headers = sys.argv[4]
 
@@ -21,35 +23,39 @@ default_params = {
   "changepoint_range": 0.80
 }
 
-def _ols():
-    data = ols(API, params, headers)
-    print(json.dumps({"data": data}))
+class Regressions:
+    def __init__(self, name):
+        self.base = BaseClass(API, json.loads(headers))
+        self.name = name
 
-def _logit():
-    data = logit(API, params, headers)
-    print(json.dumps({"data": data}))
+    def get(self):
+        def func_not_found():
+            print('No Function ' + self.name + ' Found!')
+        func_name = "_{}".format(self.name)
+        func = getattr(self, func_name, func_not_found) 
+        func()
 
-def _arima():
-    data = arima(API, params, headers)
-    print(json.dumps({"data": data}, ignore_nan=True))
+    def _ols(self):
+        data = ols(API, params, headers)
+        print(json.dumps(data, ignore_nan=True))
 
-def _probit():
-    data = probit(API, params, headers)
-    print(json.dumps({"data": data}))
+    def _logit(self):
+        data = logit(API, params, headers)
+        print(json.dumps(data, ignore_nan=True))
 
-def _prophet():
-    data = prophet(API, params, headers)
-    print(json.dumps({"data": data}, ignore_nan=True))
+    def _arima(self):
+        data = arima(API, params, headers)
+        print(json.dumps(data, ignore_nan=True))
+
+    def _probit(self):
+        data = probit(API, params, headers)
+        print(json.dumps(data))
+
+    def _prophet(self):
+        df = self.base.get_data(params)
+        data = prophet(df, params)
+        print(json.dumps(data, ignore_nan=True))
 
 if __name__ == "__main__":
-    function_name = str(sys.argv[3])
-    if (function_name == "ols"):
-        _ols()
-    elif (function_name == "logit"):
-        _logit()
-    elif (function_name == "arima"):
-        _arima()
-    elif (function_name == "probit"):
-        _probit()
-    elif (function_name == "prophet"):
-        _prophet()
+    name = str(sys.argv[3])
+    Regressions(name).get()
