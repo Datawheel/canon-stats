@@ -66,7 +66,7 @@ def pred(df, drilldowns, measures,seasonality_mode,changepoint_prior_scale,chang
         X = pd.to_datetime(X, format="%Y%m")
         periods=periods+1
         time_param = "%Y-%m"
-        print(X)
+        
 
     freq = drilldowns[0][0]
     df_temp = pd.DataFrame(X)
