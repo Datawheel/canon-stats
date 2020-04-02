@@ -14,19 +14,11 @@ params = json.loads(sys.argv[1])
 headers = sys.argv[4]
 
 
-default_params = {
-  "cube": "trade_i_baci_a_92",
-  "drilldowns": "Year",
-  "measures": "Trade Value",
-  "seasonality_mode": "multiplicative",
-  "changepoint_prior_scale": 0.05,
-  "changepoint_range": 0.80
-}
-
 class Regressions:
     def __init__(self, name):
         self.base = BaseClass(API, json.loads(headers))
         self.name = name
+
 
     def get(self):
         def func_not_found():
