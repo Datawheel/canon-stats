@@ -81,7 +81,7 @@ Object.entries(options).forEach(d => {
 });
 
 app.get(`${BASE_URL}/version`, (req, res) => {
-  return res.json({endpoints: options, version: "0.2.3"})
+  return res.json({endpoints: options, version: "0.2.4"})
 });
 
 

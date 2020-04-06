@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import warnings
 
+
 default_params = {
     "seasonality_mode" : "multiplicative",
     "changepoint_prior_scale" : 0.05,
@@ -41,6 +42,7 @@ class suppress_stdout_stderr(object):
 
 
 def pred(df, drilldowns, measures, seasonality_mode, changepoint_prior_scale, changepoint_range, periods):
+    months = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
     quarters = {1:"03", 2:"06", 3:"09", 4:"12"}
 
     level = drilldowns[0]
@@ -48,7 +50,8 @@ def pred(df, drilldowns, measures, seasonality_mode, changepoint_prior_scale, ch
 
     #Change format for date
     if "Month" in level:
-        df["Date"] = pd.to_datetime(df[["Year", "Month ID"]].assign(DAY=1))
+        df["Month"] = df["Month"].map(months)
+        df["Date"] = pd.to_datetime(df[["Year", "Month"]].assign(DAY=1))
         X = df["Date"] + pd.offsets.MonthEnd(0) 
         time_param = "%Y-%m"
 
