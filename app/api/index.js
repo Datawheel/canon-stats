@@ -56,7 +56,9 @@ Object.entries(options).forEach(d => {
       let traceback = "";
   
       // build response string based on results of python script
-      py.stdout.on("data", data => respString += data.toString());
+      py.stdout.on("data", data => {
+        respString += data.toString()
+      });
       // catch errors
       py.stderr.on("data", data => {
         traceback += data.toString();
@@ -78,10 +80,6 @@ Object.entries(options).forEach(d => {
       });
     });
   });
-});
-
-app.get(`${BASE_URL}/version`, (req, res) => {
-  return res.json({endpoints: options, version: "0.2.4"})
 });
 
 
