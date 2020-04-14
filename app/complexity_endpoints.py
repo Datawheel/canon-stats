@@ -95,16 +95,14 @@ class Complexity:
 
         # Gets data and converts request into dataframe
         if self.method in ["subnational", "relatedness"]:
-            paramsLeft = {
-                "cube": _params.get("cube"),
-                "drilldowns": drilldowns,
-                "measures": measure,
-                "parents": "true",
-                "Year": _params.get("Year")
-            }
+            paramsLeft = {}
+            for key in _params.keys():
+                param_key = _params.get(key)
+                if "Right" not in key and "filter_" not in key:
+                    paramsLeft[key] = param_key
+
             df_subnat = self.base.get_data(paramsLeft)
 
-            # return self.base.to_output(pd.DataFrame(df_subnat[dd1_id]).value_counts())
             p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
 
             col_sums = p.sum(axis=1)
