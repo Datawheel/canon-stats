@@ -161,11 +161,11 @@ def prophet(df, params):
 
         output = output.merge(df_pred, how="outer", left_index=True, right_index=True)
 
-    output[(output["Trade Value Prediction"] < 0)] = 0
-    output[(output["Trade Value Lower Bound"] < 0)] = 0
-    output[(output["Trade Value Upper Bound"] < 0)] = 0
-    output[(output["Trade Value Lower Trend"] < 0)] = 0
-    output[(output["Trade Value Upper Trend"] < 0)] = 0
+    output[(output[measures[0] + " Prediction"] < 0)] = 0
+    output[(output[measures[0] + " Lower Bound"] < 0)] = 0
+    output[(output[measures[0] + " Upper Bound"] < 0)] = 0
+    output[(output[measures[0] + " Lower Trend"] < 0)] = 0
+    output[(output[measures[0] + " Upper Trend"] < 0)] = 0
 
     output = output.drop(output[output["Date"] == 0].index)
 
