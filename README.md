@@ -74,6 +74,23 @@ The endpoint would be:
 /api/mystats/eci?cube=inegi_economic_census&rca=State,Sector,Total Gross Production&Year=2014
 ```
 
+Also, you can customize the endpoint URL for the POPULATION data, used for thresholding the results by country population. This it's done in the variable `CANON_STATS_POPULATION_BASE`.
+
+```
+export CANON_STATS_POPULATION_BASE="https://dev.oec.world/olap-proxy/data"
+```
+
+You need to add the params for the population data in the variable `CANON_STATS_POPULATION_PARAMS`, as it shows below
+
+```
+export CANON_STATS_POPULATION_PARAMS="Indicator:SP.POP.TOTL|drilldowns:Country|measures:Measure|cube:indicators_i_wdi_a"
+```
+
+Whit that done, the endpoint for population data would be:
+
+https://dev.oec.world/olap-proxy/data/Indicator=SP.POP.TOTL&drilldowns=Country&measures=Measure&cube=indicators_i_wdi_a&Year=2014
+
+
 ## Endpoints availables
 
 The stats module includes endpoints for doing different calculations. 
