@@ -88,7 +88,7 @@ export CANON_STATS_POPULATION_PARAMS="Indicator:SP.POP.TOTL|drilldowns:Country|m
 
 Whit that done, the endpoint for population data would be:
 ```
-https://dev.oec.world/olap-proxy/data/Indicator=SP.POP.TOTL&drilldowns=Country&measures=Measure&cube=indicators_i_wdi_a&Year=2014
+[https://dev.oec.world/olap-proxy/data/Indicator=SP.POP.TOTL&drilldowns=Country&measures=Measure&cube=indicators_i_wdi_a&Year=2014]
 ```
 
 
