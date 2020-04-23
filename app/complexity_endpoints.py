@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import requests
 import sys
+import os
 
 from complexity.complexity import complexity
 from complexity.opportunity_gain import opportunity_gain
@@ -153,32 +154,32 @@ class Complexity:
         else:
             df = self.base.get_data(_params)
 
+            dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+
             # Use of the population threshold 
             if "threshold_Population" in params:
-                # Calculates year for population data
-                _maxyear = 2017
-                _year = int(_params.get("YearPopulation"))
-                year = (_year if _year <= _maxyear else _maxyear) if _year else _maxyear
+                # Get params for population api
+                pop_API = os.environ["CANON_STATS_POPULATION_BASE"]
+                env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+
+                # Creates params dictionary
+                pop_params = {}
+                for row in env_params.split("|"):
+                    [index, value] = row.split(":")
+                    pop_params[index] = value
+
+                # Adds timespan to dictionary
+                if "YearPopulation" in _params:
+                    pop_params["Year"] = _params.get("YearPopulation")
+                else:
+                    pop_params["time"] = "year.latest"
                 
-                # Gets population API
-                POP_API = "https://api.oec.world/tesseract/data.jsonrecords"
-                pop_params = {
-                    "Indicator": "SP.POP.TOTL",
-                    "Year": "{}".format(year),
-                    "cube": "indicators_i_wdi_a",
-                    "drilldowns": "Country",
-                    "measures": "Measure",
-                    "parents": "false",
-                    "sparse": "false"
-                }
-                pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
+                # Calls population API
+                pop_df = BaseClass(pop_API, json.loads(headers)).get_data(pop_params)
 
                 # Gets list of country_id's that has a value over the threshold
-                list_temp_id = pop_df[pop_df["Measure"] >= int(_params.get("threshold_Population"))]["Country ID"].unique()
-                df = df[df["Country ID"].isin(list_temp_id)]
-            
-
-            dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+                list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(_params.get("threshold_Population"))][dd1_id].unique()
+                df = df[df[dd1_id].isin(list_temp_id)]
 
             # Using threshold_* param, filter rows into the dataframe
             for dd in [dd1, dd2]:
