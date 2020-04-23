@@ -153,6 +153,31 @@ class Complexity:
         else:
             df = self.base.get_data(_params)
 
+            # Use of the population threshold 
+            if "threshold_Population" in params:
+                # Calculates year for population data
+                _maxyear = 2017
+                _year = int(_params.get("YearPopulation"))
+                year = (_year if _year <= _maxyear else _maxyear) if _year else _maxyear
+                
+                # Gets population API
+                POP_API = "https://api.oec.world/tesseract/data.jsonrecords"
+                pop_params = {
+                    "Indicator": "SP.POP.TOTL",
+                    "Year": "{}".format(year),
+                    "cube": "indicators_i_wdi_a",
+                    "drilldowns": "Country",
+                    "measures": "Measure",
+                    "parents": "false",
+                    "sparse": "false"
+                }
+                pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
+
+                # Gets list of country_id's that has a value over the threshold
+                list_temp_id = pop_df[pop_df["Measure"] >= int(_params.get("threshold_Population"))]["Country ID"].unique()
+                df = df[df["Country ID"].isin(list_temp_id)]
+            
+
             dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
             # Using threshold_* param, filter rows into the dataframe
