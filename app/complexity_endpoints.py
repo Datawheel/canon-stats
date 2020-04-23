@@ -1,9 +1,9 @@
 import json
 import numpy as np
+import os
 import pandas as pd
 import requests
 import sys
-import os
 
 from complexity.complexity import complexity
 from complexity.opportunity_gain import opportunity_gain
@@ -159,7 +159,7 @@ class Complexity:
             # Use of the population threshold 
             if "threshold_Population" in params:
                 # Get params for population api
-                pop_API = os.environ["CANON_STATS_POPULATION_BASE"]
+                POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
                 env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
 
                 # Creates params dictionary
