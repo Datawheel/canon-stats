@@ -175,7 +175,7 @@ class Complexity:
                     pop_params["time"] = "year.latest"
                 
                 # Calls population API
-                pop_df = BaseClass(pop_API, json.loads(headers)).get_data(pop_params)
+                pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
 
                 # Gets list of country_id's that has a value over the threshold
                 list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(_params.get("threshold_Population"))][dd1_id].unique()
