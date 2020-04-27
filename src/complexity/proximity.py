@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 
-def proximity(rcas):
+def proximity(rcas, how="max"):
     rcas = rcas.copy()
     rcas[rcas >= 1] = 1
     rcas[rcas < 1] = 0
@@ -26,14 +26,16 @@ def proximity(rcas):
 
     # multiply these two vectors, take the squre root
     # and then we have the denominator
-    # denominator_union = kp0_trans.dot(kp0)
-    denominator_union = kp0_trans.dot(kp0)
-
-    # get square root for geometric mean
-    denominator_union_sqrt = np.power(denominator_union, .5)
+    if how == "sqrt":
+        # get square root for geometric mean
+        denominator_union = kp0_trans.dot(kp0)
+        denominator_union = np.power(denominator_union, .5)
+    else:
+        denominator_union = np.maximum(kp0, kp0_trans)
 
     # to get the proximities it is now a simple division of the untion sqrt
     # with the numerator intersections
-    phi = np.divide(numerator_intersection, denominator_union_sqrt)
+    phi = np.divide(numerator_intersection, denominator_union)
+    np.fill_diagonal(phi.values, 0)
 
     return phi
