@@ -11,8 +11,10 @@ from complexity.proximity import proximity
 from complexity.rca import rca
 from complexity.relatedness import relatedness
 from base import BaseClass
+from cache import InternalCache
 
-API = str(sys.argv[2])
+
+API = str(sys.argv[2]) + "/data"
 params = json.loads(sys.argv[1])
 headers = sys.argv[4]
 
@@ -58,22 +60,33 @@ def _threshold(df):
 class Complexity:
     def __init__(self, name):
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
+        ddi1_unique = dd1
+        ddi2_unique = dd2
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         options = params.get("options")
 
+        CUBES_API = str(sys.argv[2]) + "/cubes"
+        cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
+
         self.base = BaseClass(API, json.loads(headers))
+        self.cube_name = params.get("cube")
+        self.cubes_cache = cubes_cache
         self.dd1 = dd1
+        self.dd1_unique = ddi1_unique
+        self.dd2_unique = ddi2_unique
         self.dd1_id = dd1_id
         self.dd2 = dd2
         self.dd2_id = dd2_id
         self.eci_measure = "{} ECI".format(measure)
         self.endpoint = str(sys.argv[3])
         self.iterations = int(params.get("iterations")) if "iterations" in params else 20
+        self.labels = pd.DataFrame([])
         self.measure = measure
         self.method = params.get("method")
         self.name = name
         self.opp_gain_measure = "{} Opportunity Gain".format(measure)
         self.options = dict([item.split(":") for item in options.split(",")]) if options else {}
+        self.parents = True if params.get("parents") and params.get("parents") == "true" else False
         self.pci_measure = "{} PCI".format(measure)
         self.proximity_measure = "{} Proximity".format(measure)
         self.ranking = True if params.get("ranking") and params.get("ranking") == "true" else False
@@ -139,7 +152,8 @@ class Complexity:
             df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
             df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
 
-            df_rca_subnat = df_rca_subnat.merge(df_subnat, on=[dd1_id, dd2_id])
+            self.labels = df_subnat
+
             if self.method == "subnational":
                 return df_rca_subnat
             elif self.method == "relatedness":
@@ -192,11 +206,12 @@ class Complexity:
 
             # Copies original dataframe
             df_final = df.copy()
+            self.labels = df_final
 
             # Calculates RCA index
             df = pivot_data(df, dd1_id, dd2_id, measure)
             output = rca(df).reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
-            output = output.merge(df_final, on=[dd1_id, dd2_id], how="inner")
+            # output = output.merge(df_final, on=[dd1_id, dd2_id], how="outer").fillna(0)
 
             output = _threshold(output)
             return output
@@ -229,12 +244,33 @@ class Complexity:
         if limit and limit.isdigit():
             df = df.head(int(limit))
 
+        dd1_id = self.dd1_id
+        dd2_id = self.dd2_id
+
+        if self.endpoint not in ["eci", "pci"]:
+            if self.parents:
+                parents = self.cubes_cache[self.cube_name]["parents"]
+                dd1_parents = parents[self.dd1_unique]
+                dd2_parents = parents[self.dd2_unique]
+                dd1_parents += [get_dd_id(i) for i in dd1_parents.copy()]
+                dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
+
+                a = self.labels[dd1_parents].drop_duplicates()
+                b = self.labels[dd2_parents].drop_duplicates()
+
+            else:
+                a = self.labels[[self.dd1, dd1_id]].drop_duplicates()
+                b = self.labels[[self.dd2, dd2_id]].drop_duplicates()
+
+            df = df.merge(self.labels[[dd1_id, dd2_id, self.measure]].dropna(), on=[dd1_id, dd2_id], how="left").fillna(0)
+            df = df.merge(a, on=[dd1_id])
+            df = df.merge(b, on=[dd2_id])
+
         return df
 
 
     def _complexity(self):
         df = self.load_step()
-        df_copy = df.copy()
         dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
@@ -248,7 +284,8 @@ class Complexity:
         complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
         complexity_dd = dd1 if self.endpoint == "eci" else dd2
 
-        df_labels = df[[complexity_dd, complexity_dd_id]].drop_duplicates()
+        df_labels = self.labels[[complexity_dd, complexity_dd_id]].drop_duplicates()
+        df_copy = df.merge(df_labels, on=complexity_dd_id).copy()
 
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 

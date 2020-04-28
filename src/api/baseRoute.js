@@ -11,7 +11,7 @@ const {
   OLAP_PROXY_SECRET
 } = process.env;
 
-const api = `${CANON_STATS_API}/data`;
+const api = CANON_STATS_API;
 const port = CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 
@@ -72,6 +72,6 @@ module.exports = function (app) {
   });
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({ endpoints: options, version: "0.2.6" });
+    return res.json({ endpoints: options, version: "0.2.7" });
   });
 };
