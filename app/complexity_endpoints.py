@@ -152,7 +152,8 @@ class Complexity:
             df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
             df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
 
-            df_rca_subnat = df_rca_subnat.merge(df_subnat, on=[dd1_id, dd2_id])
+            self.labels = df_subnat
+
             if self.method == "subnational":
                 return df_rca_subnat
             elif self.method == "relatedness":
@@ -246,29 +247,30 @@ class Complexity:
         dd1_id = self.dd1_id
         dd2_id = self.dd2_id
 
-        if self.parents:
-            parents = self.cubes_cache[self.cube_name]["parents"]
-            dd1_parents = parents[self.dd1_unique]
-            dd2_parents = parents[self.dd2_unique]
-            dd1_parents += [get_dd_id(i) for i in dd1_parents.copy()]
-            dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
+        if self.endpoint not in ["eci", "pci"]:
+            if self.parents:
+                parents = self.cubes_cache[self.cube_name]["parents"]
+                dd1_parents = parents[self.dd1_unique]
+                dd2_parents = parents[self.dd2_unique]
+                dd1_parents += [get_dd_id(i) for i in dd1_parents.copy()]
+                dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
 
-            a = self.labels[dd1_parents].drop_duplicates()
-            b = self.labels[dd2_parents].drop_duplicates()
+                a = self.labels[dd1_parents].drop_duplicates()
+                b = self.labels[dd2_parents].drop_duplicates()
 
-        else:
-            a = self.labels[[self.dd1, dd1_id]].drop_duplicates()
-            b = self.labels[[self.dd2, dd2_id]].drop_duplicates()
+            else:
+                a = self.labels[[self.dd1, dd1_id]].drop_duplicates()
+                b = self.labels[[self.dd2, dd2_id]].drop_duplicates()
 
-        df = df.merge(self.labels[[dd1_id, dd2_id, self.measure]].dropna(), on=[dd1_id, dd2_id], how="left").fillna(0)
-        df = df.merge(a, on=[dd1_id])
-        df = df.merge(b, on=[dd2_id])
+            df = df.merge(self.labels[[dd1_id, dd2_id, self.measure]].dropna(), on=[dd1_id, dd2_id], how="left").fillna(0)
+            df = df.merge(a, on=[dd1_id])
+            df = df.merge(b, on=[dd2_id])
+
         return df
 
 
     def _complexity(self):
         df = self.load_step()
-        df_copy = df.copy()
         dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
@@ -282,7 +284,8 @@ class Complexity:
         complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
         complexity_dd = dd1 if self.endpoint == "eci" else dd2
 
-        df_labels = df[[complexity_dd, complexity_dd_id]].drop_duplicates()
+        df_labels = self.labels[[complexity_dd, complexity_dd_id]].drop_duplicates()
+        df_copy = df.merge(df_labels, on=complexity_dd_id).copy()
 
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 

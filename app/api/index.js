@@ -43,7 +43,6 @@ Object.entries(options).forEach(d => {
       const config = OLAP_PROXY_SECRET ? {
         "x-tesseract-jwt-token": getApiToken(headers, user)
       } : {};
-      console.log(config);
 
       const apiHeaders = JSON.stringify(config),
             apiQuery = JSON.stringify(query);
