@@ -11,7 +11,7 @@ const {
   OLAP_PROXY_SECRET
 } = process.env;
 
-const api = `${CANON_STATS_API}/data`;
+const api = CANON_STATS_API;
 const port = CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 
@@ -43,6 +43,7 @@ Object.entries(options).forEach(d => {
       const config = OLAP_PROXY_SECRET ? {
         "x-tesseract-jwt-token": getApiToken(headers, user)
       } : {};
+      console.log(config);
 
       const apiHeaders = JSON.stringify(config),
             apiQuery = JSON.stringify(query);
