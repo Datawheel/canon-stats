@@ -60,9 +60,7 @@ module.exports = function(app) {
         } : {};
 
         const serverConfig = {
-          headers: {
-            "x-tesseract-jwt-token": serverApiToken
-          }
+          "x-tesseract-jwt-token": serverApiToken
         };
 
         const apiHeaders = JSON.stringify(config),
