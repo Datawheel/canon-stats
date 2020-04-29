@@ -5,3 +5,4 @@ venv/
 .env
 .publish.sh
 *.ipynb
+canon_stats_cache.sqlite
