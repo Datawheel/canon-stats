@@ -24,33 +24,54 @@ const options = {
   "regressions": ["ols", "logit", "arima", "probit", "prophet"]
 };
 
-const getApiToken = (headers, user) => 
-  headers["x-tesseract-jwt-token"] || 
+const getApiToken = (headers, user) => {
+  const authLevel = {
+    auth_level: 0,
+    sub: "server",
+    status: "valid"
+  };
+
+  return {apiToken: headers["x-tesseract-jwt-token"] || 
   jwt.sign(
-    {
-      auth_level: 10,
-      sub: "server",
-      status: "valid"
-    },
+    authLevel,
     OLAP_PROXY_SECRET,
     {expiresIn: "30m"}
-  );
+  ), authLevel: authLevel.auth_level};
+}
 
 Object.entries(options).forEach(d => {
   d[1].forEach(endpoint => {
     app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
       const {headers, query, user} = req;
+      const {apiToken, authLevel} = getApiToken(headers, user);
       const config = OLAP_PROXY_SECRET ? {
-        "x-tesseract-jwt-token": getApiToken(headers, user)
+        "x-tesseract-jwt-token": apiToken
       } : {};
 
+      const serverApiToken = jwt.sign(
+        {
+          auth_level: 10,
+          sub: "server",
+          status: "valid"
+        },
+        OLAP_PROXY_SECRET,
+        {expiresIn: "30m"}
+      );
+  
+      const serverConfig = {
+        headers: {
+          "x-tesseract-jwt-token": serverApiToken
+        }
+      };
+
       const apiHeaders = JSON.stringify(config),
+            apiServerHeaders = JSON.stringify(serverConfig),
             apiQuery = JSON.stringify(query);
 
       const pyPath = path.join(__dirname, `../${d[0]}_endpoints.py`);
       const py = spawn(
         ENGINE,
-        ["-W", "ignore", pyPath, apiQuery, api, endpoint, apiHeaders]
+        ["-W", "ignore", pyPath, apiQuery, api, endpoint, apiHeaders, authLevel, apiServerHeaders]
       );
       let respString = "";
       let traceback = "";
@@ -75,7 +96,8 @@ Object.entries(options).forEach(d => {
             error: error.toString()
           }
           if (debug && debug === "true") output.traceback = traceback.split("\r\n");
-          return res.json(output);
+          const errorCode = traceback.includes("This cube is not public") ? 401 : 404;
+          return res.status(errorCode).json(output);
         }
       });
     });

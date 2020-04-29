@@ -17,6 +17,10 @@ from cache import InternalCache
 API = str(sys.argv[2]) + "/data"
 params = json.loads(sys.argv[1])
 headers = sys.argv[4]
+auth_level = int(sys.argv[5]) or 0
+server_headers = sys.argv[6]
+CUBES_API = str(sys.argv[2]) + "/cubes"
+cubes_cache = InternalCache(CUBES_API, json.loads(server_headers)).cubes
 
 
 def pivot_data(df, index, columns, values):
@@ -65,10 +69,7 @@ class Complexity:
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         options = params.get("options")
 
-        CUBES_API = str(sys.argv[2]) + "/cubes"
-        cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
-
-        self.base = BaseClass(API, json.loads(headers))
+        self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
         self.cube_name = params.get("cube")
         self.cubes_cache = cubes_cache
         self.dd1 = dd1
@@ -115,7 +116,7 @@ class Complexity:
                 pop_params["time"] = "year.latest"
 
             # Calls population API
-            pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
+            pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
 
             # Gets list of country_id's that has a value over the threshold
             list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
@@ -164,14 +165,14 @@ class Complexity:
             dd1_right, dd2_right, measure_right =  _params.get("rcaRight").split(",")
 
             # Calculates denominator
-            paramsRight = {
+            params_right = {
                 "cube": _params.get("cubeRight"),
                 "drilldowns": "{},{}".format(dd1_right, dd2_right),
                 "measures": measure_right,
                 "Year": _params.get("YearRight")
             }
 
-            df_right = self.base.get_data(paramsRight)
+            df_right = self.base.get_data(params_right)
             df_right = self.threshold_step(df_right)
 
             if params.get("aliasRight"):
@@ -302,14 +303,14 @@ class Complexity:
             dd1_right, dd2_right, measure_right =  params.get("rcaRight").split(",")
 
             # Calculates denominator
-            paramsRight = {
+            params_right = {
                 "cube": params.get("cubeRight"),
                 "drilldowns": "{},{}".format(dd1_right, dd2_right),
                 "measures": measure_right,
                 "Year": params.get("YearRight")
             }
 
-            df_right = self.base.get_data(paramsRight)
+            df_right = self.base.get_data(params_right)
             df_right = self.threshold_step(df_right)
 
             if params.get("aliasRight"):
