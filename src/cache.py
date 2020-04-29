@@ -20,6 +20,7 @@ class InternalCache:
                         levels[level_name] = level_names.copy()
 
             item[cube["name"]] = {
+                "min_auth_level": cube["min_auth_level"],
                 "parents": levels
             }
 

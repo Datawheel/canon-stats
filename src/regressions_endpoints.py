@@ -8,15 +8,20 @@ from regressions.probit import probit
 from regressions.prophet import prophet
 
 from base import BaseClass
+from cache import InternalCache
 
-API = str(sys.argv[2])
+API = str(sys.argv[2]) + "/data"
 params = json.loads(sys.argv[1])
 headers = sys.argv[4]
+auth_level = int(sys.argv[5]) or 0
+server_headers = sys.argv[6]
+CUBES_API = str(sys.argv[2]) + "/cubes"
+cubes_cache = InternalCache(CUBES_API, json.loads(server_headers)).cubes
 
 
 class Regressions:
     def __init__(self, name):
-        self.base = BaseClass(API, json.loads(headers))
+        self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
         self.name = name
 
 
