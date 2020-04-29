@@ -26,7 +26,7 @@ const options = {
 
 const getApiToken = (headers, user) => {
   const authLevel = {
-    auth_level: 0,
+    auth_level: 10,
     sub: "server",
     status: "valid"
   };

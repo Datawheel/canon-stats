@@ -31,12 +31,15 @@ const getApiToken = (headers, user) => {
     status: "valid"
   };
 
-  return {apiToken: headers["x-tesseract-jwt-token"] || 
-  jwt.sign(
-    authLevel,
-    OLAP_PROXY_SECRET,
-    {expiresIn: "30m"}
-  ), authLevel: authLevel.auth_level};
+  return {
+    apiToken: headers["x-tesseract-jwt-token"] || 
+      jwt.sign(
+        authLevel,
+        OLAP_PROXY_SECRET,
+        {expiresIn: "30m"}
+      ),
+    authLevel: authLevel.auth_level
+  };
 }
 
 const serverApiToken = jwt.sign(
