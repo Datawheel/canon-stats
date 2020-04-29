@@ -94,6 +94,44 @@ class Complexity:
         self.relatedness_measure = "{} Relatedness".format(measure)
 
 
+    def threshold_step(self, df):
+        dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+        df_copy = df.copy()
+        if "threshold_Population" in params:
+            # Get params for population api
+            POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
+            env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+
+            # Creates params dictionary
+            pop_params = {}
+            for row in env_params.split("|"):
+                [index, value] = row.split(":")
+                pop_params[index] = value
+
+            # Adds timespan to dictionary
+            if "YearPopulation" in params:
+                pop_params["Year"] = params.get("YearPopulation")
+            else:
+                pop_params["time"] = "year.latest"
+
+            # Calls population API
+            pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
+
+            # Gets list of country_id's that has a value over the threshold
+            list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
+            df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
+
+        for dd in [dd1, dd2]:
+            filter_var = "threshold_{}".format(dd)
+            dd_id = get_dd_id(dd)
+            if filter_var in params and dd_id in list(df_copy):
+                df_temp = df_copy[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
+                list_temp = df_temp[df_temp[self.measure] >= float(params[filter_var])][dd_id].unique()
+                df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
+
+        return df_copy
+
+
     def load_step(self):
         """
         Requests data from tesseract endpoint, and calculates RCA index
@@ -134,6 +172,7 @@ class Complexity:
             }
 
             df_right = self.base.get_data(paramsRight)
+            df_right = self.threshold_step(df_right)
 
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
@@ -171,38 +210,7 @@ class Complexity:
             dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
             # Use of the population threshold 
-            if "threshold_Population" in params:
-                # Get params for population api
-                POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
-                env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
-
-                # Creates params dictionary
-                pop_params = {}
-                for row in env_params.split("|"):
-                    [index, value] = row.split(":")
-                    pop_params[index] = value
-
-                # Adds timespan to dictionary
-                if "YearPopulation" in _params:
-                    pop_params["Year"] = _params.get("YearPopulation")
-                else:
-                    pop_params["time"] = "year.latest"
-                
-                # Calls population API
-                pop_df = BaseClass(POP_API, json.loads(headers)).get_data(pop_params)
-
-                # Gets list of country_id's that has a value over the threshold
-                list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(_params.get("threshold_Population"))][dd1_id].unique()
-                df = df[df[dd1_id].isin(list_temp_id)]
-
-            # Using threshold_* param, filter rows into the dataframe
-            for dd in [dd1, dd2]:
-                filter_var = "threshold_{}".format(dd)
-                dd_id = get_dd_id(dd)
-                if filter_var in _params and dd_id in list(df):
-                    df_temp = df[[dd_id, measure]].groupby([dd_id]).sum().reset_index()
-                    list_temp = df_temp[df_temp[measure] >= float(params[filter_var])][dd_id].unique()
-                    df = df[df[dd_id].isin(list_temp)]
+            df = self.threshold_step(df)
 
             # Copies original dataframe
             df_final = df.copy()
@@ -211,7 +219,6 @@ class Complexity:
             # Calculates RCA index
             df = pivot_data(df, dd1_id, dd2_id, measure)
             output = rca(df).reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
-            # output = output.merge(df_final, on=[dd1_id, dd2_id], how="outer").fillna(0)
 
             output = _threshold(output)
             return output
@@ -303,6 +310,7 @@ class Complexity:
             }
 
             df_right = self.base.get_data(paramsRight)
+            df_right = self.threshold_step(df_right)
 
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
