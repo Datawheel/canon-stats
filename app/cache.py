@@ -1,11 +1,11 @@
 import functools
 import os
 import requests 
-import requests_cache
+# import requests_cache
 
 class InternalCache:
     def __init__(self, API, headers):
-        r = requests.get(API, headers=headers)
+        r = requests.get(API, headers)
         cubes = r.json()["cubes"]
         item = {}
 
