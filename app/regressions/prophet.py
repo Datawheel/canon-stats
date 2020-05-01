@@ -3,8 +3,8 @@ from pandas.tseries.offsets import Day, MonthEnd, YearEnd
 import os 
 import pandas as pd
 import warnings
-
-
+from dateutil.easter import easter
+import numpy as np
 default_params = {
     "seasonality_mode" : "multiplicative",
     "changepoint_prior_scale" : 0.05,
@@ -161,12 +161,12 @@ def prophet(df, params):
 
         output = output.merge(df_pred, how="outer", left_index=True, right_index=True)
 
-    output[(output[measures[0] + " Prediction"] < 0)] = 0
-    output[(output[measures[0] + " Lower Bound"] < 0)] = 0
-    output[(output[measures[0] + " Upper Bound"] < 0)] = 0
-    output[(output[measures[0] + " Lower Trend"] < 0)] = 0
-    output[(output[measures[0] + " Upper Trend"] < 0)] = 0
-
+    output[measures[0] + " Prediction"] =  np.where(output[measures[0] + " Prediction"] < 0,0,output[measures[0] + " Prediction"])
+    output[measures[0] + " Lower Bound"] =  np.where(output[measures[0] + " Lower Bound"] < 0,0,output[measures[0] + " Lower Bound"])
+    output[measures[0] + " Upper Bound"] =  np.where(output[measures[0] + " Upper Bound"] < 0,0,output[measures[0] + " Upper Bound"])
+    output[measures[0] + " Trend"] =  np.where(output[measures[0] + " Lower Trend"] < 0,0,output[measures[0] + " Lower Trend"])
+    output[measures[0] + " Lower Trend"] =  np.where(output[measures[0] + " Lower Trend"] < 0,0,output[measures[0] + " Lower Trend"])
+    output[measures[0] + " Upper Trend"] =  np.where(output[measures[0] + " Upper Trend"] < 0,0,output[measures[0] + " Upper Trend"])
     output = output.drop(output[output["Date"] == 0].index)
 
     return { 
@@ -181,4 +181,4 @@ def prophet(df, params):
 
 if __name__ == "__main__":
     #prophet(sys.argv[1])
-    prophet("https://api.oec.world/tesseract/data", {"drilldowns":"Quarter","measures":"Trade Value","cube":"trade_i_comtrade_m_hs","parents":"true"},"{}")
+    prophet("", {"drilldowns":"Month","measures":"Trade Value","cube":"trade_i_baci_a_92","parents":"true"})
