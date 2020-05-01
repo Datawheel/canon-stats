@@ -17,15 +17,15 @@ class BaseClass:
         self.cubes_cache = cubes_cache
 
     def get_data(self, params={}):
-        cube = params.get("cube")
-        if self.auth_level >= self.cubes_cache[cube]["min_auth_level"]:
-            r = requests.get(self.API, params=params, headers=self.headers)
-            json_data = r.json()
-            if (r.status_code != 200):
-                raise Exception(r.text)
-            df = pd.DataFrame(json_data["data"]) if "data" in json_data else pd.DataFrame([])
-        else:
-            raise Exception("This cube is not public")
+        # cube = params.get("cube")
+        # if self.auth_level >= self.cubes_cache[cube]["min_auth_level"]:
+        r = requests.get(self.API, params=params, headers=self.headers)
+        json_data = r.json()
+        if (r.status_code != 200):
+            raise Exception(r.text)
+        df = pd.DataFrame(json_data["data"]) if "data" in json_data else pd.DataFrame([])
+        #else:
+        #    raise Exception("This cube is not public")
 
         return df
 
