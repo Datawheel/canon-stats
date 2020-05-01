@@ -164,7 +164,7 @@ def prophet(df, params):
     output[measures[0] + " Prediction"] =  np.where(output[measures[0] + " Prediction"] < 0,0,output[measures[0] + " Prediction"])
     output[measures[0] + " Lower Bound"] =  np.where(output[measures[0] + " Lower Bound"] < 0,0,output[measures[0] + " Lower Bound"])
     output[measures[0] + " Upper Bound"] =  np.where(output[measures[0] + " Upper Bound"] < 0,0,output[measures[0] + " Upper Bound"])
-    output[measures[0] + " Trend"] =  np.where(output[measures[0] + " Lower Trend"] < 0,0,output[measures[0] + " Lower Trend"])
+    output[measures[0] + " Trend"] =  np.where(output[measures[0] + " Trend"] < 0,0,output[measures[0] + " Trend"])
     output[measures[0] + " Lower Trend"] =  np.where(output[measures[0] + " Lower Trend"] < 0,0,output[measures[0] + " Lower Trend"])
     output[measures[0] + " Upper Trend"] =  np.where(output[measures[0] + " Upper Trend"] < 0,0,output[measures[0] + " Upper Trend"])
     output = output.drop(output[output["Date"] == 0].index)
