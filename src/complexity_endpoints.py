@@ -20,7 +20,7 @@ headers = sys.argv[4]
 auth_level = int(sys.argv[5]) or 0
 server_headers = sys.argv[6]
 CUBES_API = str(sys.argv[2]) + "/cubes"
-cubes_cache = InternalCache(CUBES_API, json.loads(server_headers)).cubes
+cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
 
 
 def pivot_data(df, index, columns, values):
