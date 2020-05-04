@@ -191,6 +191,8 @@ class Complexity:
 
             df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
             df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
+            if "variable" in list(df_rca_subnat):
+                df_rca_subnat = df_rca_subnat.rename(columns={"variable": dd2_id})
 
             self.labels = df_subnat
 
