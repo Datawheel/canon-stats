@@ -362,7 +362,6 @@ class Complexity:
             value_name=self.opp_gain_measure
         )
 
-        output = output.merge(df_copy, on=[dd1_id, dd2_id], how="inner")
         output = self.transform_step(output, [dd1, dd2], self.opp_gain_measure)
 
         self.base.to_output(output)
