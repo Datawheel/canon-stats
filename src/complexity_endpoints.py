@@ -63,6 +63,20 @@ class Complexity:
         ddi1_unique = dd1
         ddi2_unique = dd2
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+
+        # Keeps drilldowns used in cubes using method="subnational|relatedness"
+        if params.get("rcaRight"):
+            dd1_right, dd2_right, measure = params.get("rcaRight").split(",")
+            if params.get("aliasRight"):
+                dd1_right, dd2_right = params.get("aliasRight").split(",")
+            dd1_right_id = get_dd_id(dd1_right)
+            dd2_right_id = get_dd_id(dd2_right)
+        else:
+            dd1_right = dd1
+            dd1_right_id = dd1_id
+            dd2_right = dd2
+            dd2_right_id = dd2_id
+
         options = params.get("options")
         threshold = params.get("threshold")
 
@@ -72,6 +86,10 @@ class Complexity:
         self.dd1 = dd1
         self.dd1_unique = ddi1_unique
         self.dd2_unique = ddi2_unique
+        self.dd1_right = dd1_right
+        self.dd2_right = dd2_right
+        self.dd1_right_id = dd1_right_id
+        self.dd2_right_id = dd2_right_id
         self.dd1_id = dd1_id
         self.dd2 = dd2
         self.dd2_id = dd2_id
@@ -100,6 +118,7 @@ class Complexity:
 
         if threshold_items:
             for item in list(threshold_items.items()):
+                is_right = "Right" in item[0]
                 key = item[0].replace("Right", "")
                 value = float(item[1])
 
@@ -125,8 +144,9 @@ class Complexity:
                     pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
 
                     # Gets list of country_id's that has a value over the threshold
-                    list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(value)][dd1_id].unique()
-                    df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
+                    dd_geo_id = self.dd1_right_id if is_right else dd1_id
+                    list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(value)][dd_geo_id].unique()
+                    df_copy = df_copy[df_copy[dd_geo_id].isin(list_temp_id)]
 
                 elif dd_id in list(df):
                     df_temp = df[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
