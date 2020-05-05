@@ -23,6 +23,12 @@ CUBES_API = str(sys.argv[2]) + "/cubes"
 cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
 
 
+def filter_threshold(x, right=False):
+    if "Right" in x[0]:
+        return right
+    else:
+        return not right
+
 def pivot_data(df, index, columns, values):
     return pd.pivot_table(df, index=[index], columns=[columns], values=values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
 
@@ -51,16 +57,6 @@ def _load_alias_params():
     return dd1, dd2, dd1_id, dd2_id
 
 
-def _threshold(df): 
-    dd1, dd2, measure = params["rca"].split(",")
-    if "threshold" in params:
-        df["pivot"] = df[df[measure] > int(params["threshold"])]
-        df = df[df["pivot"] == True].copy()
-        df = df.drop(columns=["pivot"])
-
-    return df
-
-
 class Complexity:
     def __init__(self, name):
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
@@ -68,6 +64,7 @@ class Complexity:
         ddi2_unique = dd2
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         options = params.get("options")
+        threshold = params.get("threshold")
 
         self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
         self.cube_name = params.get("cube")
@@ -93,42 +90,86 @@ class Complexity:
         self.ranking = True if params.get("ranking") and params.get("ranking") == "true" else False
         self.rca_measure = "{} RCA".format(measure)
         self.relatedness_measure = "{} Relatedness".format(measure)
+        self.threshold = dict([item.split(":") for item in threshold.split(",")]) if threshold else {}
 
 
-    def threshold_step(self, df):
+    def threshold_step(self, df, threshold = {}):
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         df_copy = df.copy()
-        if "threshold_Population" in params:
-            # Get params for population api
-            POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
-            env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+        threshold_items = threshold or self.threshold
 
-            # Creates params dictionary
-            pop_params = {}
-            for row in env_params.split("|"):
-                [index, value] = row.split(":")
-                pop_params[index] = value
+        if threshold_items:
+            for item in list(threshold_items.items()):
+                key = item[0].replace("Right", "")
+                value = float(item[1])
 
-            # Adds timespan to dictionary
-            if "YearPopulation" in params:
-                pop_params["Year"] = params.get("YearPopulation")
-            else:
-                pop_params["time"] = "year.latest"
+                dd_id = get_dd_id(key)
+                if key == "Population": 
+                    # Get params for population api
+                    POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
+                    env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
 
-            # Calls population API
-            pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
+                    # Creates params dictionary
+                    pop_params = {}
+                    for row in env_params.split("|"):
+                        [index, v] = row.split(":")
+                        pop_params[index] = v
 
-            # Gets list of country_id's that has a value over the threshold
-            list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
-            df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
+                    # Adds timespan to dictionary
+                    if "YearPopulation" in params:
+                        pop_params["Year"] = params.get("YearPopulation")
+                    else:
+                        pop_params["time"] = "year.latest"
 
-        for dd in [dd1, dd2]:
-            filter_var = "threshold_{}".format(dd)
-            dd_id = get_dd_id(dd)
-            if filter_var in params and dd_id in list(df_copy):
-                df_temp = df_copy[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
-                list_temp = df_temp[df_temp[self.measure] >= float(params[filter_var])][dd_id].unique()
-                df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
+                    # Calls population API
+                    pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
+
+                    # Gets list of country_id's that has a value over the threshold
+                    list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(value)][dd1_id].unique()
+                    df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
+
+                elif dd_id in list(df):
+                    df_temp = df[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
+                    threshold_value = value
+                    if (threshold_value < 1):
+                        df_sum = df[self.measure].sum()
+                        threshold_value *= df_sum
+                    list_temp = df_temp[df_temp[self.measure] >= threshold_value][dd_id].unique()
+                    df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
+
+        else:
+            if "threshold_Population" in params:
+                # Get params for population api
+                POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
+                env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+
+                # Creates params dictionary
+                pop_params = {}
+                for row in env_params.split("|"):
+                    [index, value] = row.split(":")
+                    pop_params[index] = value
+
+                # Adds timespan to dictionary
+                if "YearPopulation" in params:
+                    pop_params["Year"] = params.get("YearPopulation")
+                else:
+                    pop_params["time"] = "year.latest"
+
+                # Calls population API
+                pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
+
+                # Gets list of country_id's that has a value over the threshold
+                list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
+                df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
+
+
+            for dd in [dd1, dd2]:
+                filter_var = "threshold_{}".format(dd)
+                dd_id = get_dd_id(dd)
+                if filter_var in params and dd_id in list(df_copy):
+                    df_temp = df[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
+                    list_temp = df_temp[df_temp[self.measure] >= float(params[filter_var])][dd_id].unique()
+                    df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
 
         return df_copy
 
@@ -156,6 +197,9 @@ class Complexity:
 
             df_subnat = self.base.get_data(paramsLeft)
 
+            threshold_items = dict(filter(lambda x: filter_threshold(x), self.threshold.items()))
+            df_subnat = self.threshold_step(df_subnat, threshold_items)
+
             p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
 
             col_sums = p.sum(axis=1)
@@ -173,7 +217,8 @@ class Complexity:
             }
 
             df_right = self.base.get_data(params_right)
-            df_right = self.threshold_step(df_right)
+            threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
+            df_right = self.threshold_step(df_right, threshold_items)
 
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
@@ -223,7 +268,6 @@ class Complexity:
             df = pivot_data(df, dd1_id, dd2_id, measure)
             output = rca(df).reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
 
-            output = _threshold(output)
             return output
 
 
@@ -313,7 +357,8 @@ class Complexity:
             }
 
             df_right = self.base.get_data(params_right)
-            df_right = self.threshold_step(df_right)
+            threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
+            df_right = self.threshold_step(df_right, threshold_items)
 
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
