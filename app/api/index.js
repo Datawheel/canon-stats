@@ -39,7 +39,7 @@ const getApiToken = (headers, user) => {
   ), authLevel: authLevel.auth_level};
 }
 
-const serverApiToken = jwt.sign(
+const serverApiToken = OLAP_PROXY_SECRET ? jwt.sign(
   {
     auth_level: 10,
     sub: "server",
@@ -47,7 +47,7 @@ const serverApiToken = jwt.sign(
   },
   OLAP_PROXY_SECRET,
   {expiresIn: "30m"}
-);
+) : "";
 
 Object.entries(options).forEach(d => {
   d[1].forEach(endpoint => {
@@ -58,9 +58,9 @@ Object.entries(options).forEach(d => {
         "x-tesseract-jwt-token": apiToken
       } : {};
   
-      const serverConfig = {
+      const serverConfig = OLAP_PROXY_SECRET ? {
         "x-tesseract-jwt-token": serverApiToken
-      };
+      } : {};
 
       const apiHeaders = JSON.stringify(config),
             apiServerHeaders = JSON.stringify(serverConfig),
