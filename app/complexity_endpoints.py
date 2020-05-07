@@ -353,6 +353,7 @@ class Complexity:
                 a = self.labels[dd_parents].drop_duplicates()
             else:
                 a = self.labels[[dd, dd_id]].drop_duplicates()
+
             df = df.merge(a, on=[dd_id])
 
         return df
@@ -373,8 +374,7 @@ class Complexity:
         complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
         complexity_dd = dd1 if self.endpoint == "eci" else dd2
 
-        df_labels = self.labels[[complexity_dd, complexity_dd_id]].drop_duplicates()
-        df_copy = df.merge(df_labels, on=complexity_dd_id).copy()
+        df_copy = df.copy()
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 
         # Filters by ECI threshold
@@ -426,7 +426,7 @@ class Complexity:
             eci, pci = complexity(rca(df_right), iterations)
             df_pci = pd.DataFrame(pci).rename(columns={0: complexity_measure}).reset_index()
             df_pci = df_pci.merge(df_copy, on=dd2_id)
-            dds = [complexity_dd_id, complexity_dd]
+            dds = [complexity_dd_id]
             results = df_pci[df_pci[rca_measure] >= 1].groupby(dds).mean().reset_index()
             results = results[dds + [complexity_measure]]
 
