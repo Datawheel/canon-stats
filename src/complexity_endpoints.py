@@ -79,6 +79,7 @@ class Complexity:
 
         options = params.get("options")
         threshold = params.get("threshold")
+        eciThreshold = params.get("eciThreshold")
 
         self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
         self.cube_name = params.get("cube")
@@ -109,6 +110,7 @@ class Complexity:
         self.rca_measure = "{} RCA".format(measure)
         self.relatedness_measure = "{} Relatedness".format(measure)
         self.threshold = dict([item.split(":") for item in threshold.split(",")]) if threshold else {}
+        self.eciThreshold = dict([item.split(":") for item in eciThreshold.split(",")]) if eciThreshold else {}
 
 
     def threshold_step(self, df, threshold = {}):
@@ -286,7 +288,8 @@ class Complexity:
 
             # Calculates RCA index
             df = pivot_data(df, dd1_id, dd2_id, measure)
-            output = rca(df).reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
+            output = rca(df)
+            output = output.reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
 
             return output
 
@@ -339,6 +342,18 @@ class Complexity:
             df = df.merge(self.labels[[dd1_id, dd2_id, self.measure]].dropna(), on=[dd1_id, dd2_id], how="left").fillna(0)
             df = df.merge(a, on=[dd1_id])
             df = df.merge(b, on=[dd2_id])
+        else:
+            dd = self.dd1 if self.endpoint == "eci" else self.dd2
+            dd_id = dd1_id if self.endpoint == "eci" else dd2_id
+            if self.parents:
+                parents = self.cubes_cache[self.cube_name]["parents"]
+                dd_unique = self.dd1_unique if self.endpoint == "eci" else self.dd2_unique
+                dd_parents = parents[dd_unique]
+                dd_parents += [get_dd_id(i) for i in dd_parents.copy()]
+                a = self.labels[dd_parents].drop_duplicates()
+            else:
+                a = self.labels[[dd, dd_id]].drop_duplicates()
+            df = df.merge(a, on=[dd_id])
 
         return df
 
@@ -360,34 +375,54 @@ class Complexity:
 
         df_labels = self.labels[[complexity_dd, complexity_dd_id]].drop_duplicates()
         df_copy = df.merge(df_labels, on=complexity_dd_id).copy()
-
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
+
+        # Filters by ECI threshold
+        if self.eciThreshold:
+            rcas = df.copy()
+            rcas[rcas >= 1] = 1
+            rcas[rcas < 1] = 0
+            if dd1 in self.eciThreshold:
+                value = int(self.eciThreshold[dd1])
+                cols = np.sum(rcas, axis=1)
+                cols = list(cols[cols > value].index)
+                df = df[df.index.isin(cols)]
+                df_copy = df_copy[df_copy[dd1_id].isin(cols)]
+            if dd2 in self.eciThreshold:
+                value = int(self.eciThreshold[dd2])
+                rows = np.sum(rcas, axis=0)
+                rows = list(rows[rows > value].index)
+                df = df[rows]
+                df_copy = df_copy[df_copy[dd2_id].isin(cols)]
 
         iterations = self.iterations
 
+        # Calculates ECI / PCI for subnational territories
         if self.method == "subnational":
+            # If method="subnational", you need to defined a comparison cube
             dd1_right, dd2_right, measure_right =  params.get("rcaRight").split(",")
 
-            # Calculates denominator
+            # Calculates RCA matrix using a comparison cube
             params_right = {
                 "cube": params.get("cubeRight"),
                 "drilldowns": "{},{}".format(dd1_right, dd2_right),
                 "measures": measure_right,
                 "Year": params.get("YearRight")
             }
-
             df_right = self.base.get_data(params_right)
             threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
             df_right = self.threshold_step(df_right, threshold_items)
 
+            # Gets dd1/dd2 ids for comparison cube
             if params.get("aliasRight"):
                 dd1_right, dd2_right = params.get("aliasRight").split(",")
-
             dd1_right_id = get_dd_id(dd1_right)
             dd2_right_id = get_dd_id(dd2_right)
 
+            # Pivots dataframe
             df_right = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
 
+            # Calculates ECI / PCI for comparison cube
             eci, pci = complexity(rca(df_right), iterations)
             df_pci = pd.DataFrame(pci).rename(columns={0: complexity_measure}).reset_index()
             df_pci = df_pci.merge(df_copy, on=dd2_id)
@@ -399,7 +434,7 @@ class Complexity:
             eci, pci = complexity(df, iterations)
             complexity_data = eci if self.endpoint == "eci" else pci
             results = pd.DataFrame(complexity_data).rename(columns={0: complexity_measure}).reset_index()
-            results = df_labels.merge(results, on=complexity_dd_id)
+            # results = df_labels.merge(results, on=complexity_dd_id)
 
         results = self.transform_step(results, [dd1, dd2], complexity_measure)
 
