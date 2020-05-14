@@ -53,7 +53,10 @@ Object.entries(options).forEach(d => {
   d[1].forEach(endpoint => {
     app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
       const {headers, query, user} = req;
-      const {apiToken, authLevel} = getApiToken(headers, user);
+      const {apiToken, authLevel} = OLAP_PROXY_SECRET 
+        ? getApiToken(headers, user) 
+        : {authLevel: 0};
+
       const config = OLAP_PROXY_SECRET ? {
         "x-tesseract-jwt-token": apiToken
       } : {};

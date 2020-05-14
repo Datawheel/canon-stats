@@ -57,7 +57,10 @@ module.exports = function(app) {
     d[1].forEach(endpoint => {
       app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
         const {headers, query, user} = req;
-        const {apiToken, authLevel} = getApiToken(headers, user);
+        const {apiToken, authLevel} = OLAP_PROXY_SECRET 
+          ? getApiToken(headers, user) 
+          : {authLevel: 0};
+
         const config = OLAP_PROXY_SECRET ? {
           "x-tesseract-jwt-token": apiToken
         } : {};
@@ -105,7 +108,7 @@ module.exports = function(app) {
   });
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({endpoints: options, version: "0.3.12"})
+    return res.json({endpoints: options, version: "0.3.13"})
   });
 
 }
