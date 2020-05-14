@@ -125,7 +125,7 @@ class Complexity:
                 value = float(item[1])
 
                 dd_id = get_dd_id(key)
-                if key == "Population" && os.environ["CANON_STATS_POPULATION_BASE"]: 
+                if key == "Population" and os.environ["CANON_STATS_POPULATION_BASE"]: 
                     # Get params for population api
                     POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
                     env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
