@@ -20,6 +20,7 @@ const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
 
 const options = {
   "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
+  "correlation": ["correlation"],
   "network": ["network"],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"]
 };
