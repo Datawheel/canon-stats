@@ -358,6 +358,48 @@ class Complexity:
 
         return df
 
+    def transform_proximity_step(self, df, filters):
+        dd1 = self.dd2
+        dd1_id = self.dd1_id
+        dd2 = self.dd2
+        dd2_id = self.dd2_id
+        proximity_measure = self.proximity_measure
+
+        if filters:
+            df = df[df["{} ID Source".format(dd1)].isin(filters)]
+
+        filter_var = "filter_{}".format(dd2)
+
+        if filter_var in params and "{} ID Source".format(dd2) in list(df):
+            df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
+
+        filter_val = "proximity_min"
+
+        if filter_val in params:
+            df = df[df[proximity_measure] > float(params[filter_val])]
+
+        if self.parents:
+            parents = self.cubes_cache[self.cube_name]["parents"]
+            dd2_parents = parents[self.dd2_unique]
+            dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
+
+            a = self.labels[dd2_parents].drop_duplicates().rename(columns={dd2_id: "{} Source".format(dd2_id)}).dropna()
+            b = self.labels[dd2_parents].drop_duplicates().rename(columns={dd2_id: "{} Target".format(dd2_id)}).dropna()
+
+            source_columns = {parent: "{} Source".format(parent) for parent in dd2_parents}
+            target_columns = {parent: "{} Target".format(parent) for parent in dd2_parents}
+                                       
+            df = df.merge(a, on=["{} Source".format(dd2_id)], how="left").fillna(0).rename(columns=source_columns)
+            df = df.merge(b, on=["{} Target".format(dd2_id)], how="left").fillna(0).rename(columns=target_columns)
+
+        else:
+            a = self.labels[[self.dd2, dd2_id]].drop_duplicates().rename(columns={dd2_id: "{} Source".format(dd2_id)}).dropna()
+            b = self.labels[[self.dd2, dd2_id]].drop_duplicates().rename(columns={dd2_id: "{} Target".format(dd2_id)}).dropna()
+
+            df = df.merge(a, on=["{} Source".format(dd2_id)], how="left").fillna(0).rename(columns={dd2: "{} Source".format(dd2)})
+            df = df.merge(b, on=["{} Target".format(dd2_id)], how="left").fillna(0).rename(columns={dd2: "{} Target".format(dd2)})
+
+        return df
 
     def _complexity(self):
         df = self.load_step()
@@ -469,13 +511,20 @@ class Complexity:
 
     def _proximity(self):
         df = self.load_step()
+        dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
         dd2_id = self.dd2_id
         rca_measure = self.rca_measure
 
-        df_labels = df[[dd2, dd2_id]].drop_duplicates()
-        
+        df_labels = df[[dd2_id]].drop_duplicates()
+
+        #gets products ids where Country has RCA > 1, if Country filter is defined as param
+        try:
+            filters_rca = list(df[(df[rca_measure] > 1) & (df[dd1_id] == params["filter_{}".format(dd1)])]["{} ID".format(dd2)])
+        except: 
+            filters_rca = False
+
         rcas = pivot_data(df, dd1_id, dd2_id, rca_measure)
         df = proximity(rcas)
 
@@ -490,11 +539,9 @@ class Complexity:
             df = df.rename(columns={dd2: "{} {}".format(dd2, item)})
             df = df.drop(columns=[dd2_id])
 
-        filter_var = "filter_{}".format(dd2)
-        if filter_var in params and "{} ID Source".format(dd2) in list(df):
-            df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
+        output = self.transform_proximity_step(df, filters_rca)
 
-        self.base.to_output(df)
+        self.base.to_output(output)
 
 
     def _rca(self):
