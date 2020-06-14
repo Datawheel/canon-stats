@@ -1,8 +1,8 @@
 {
   "name": "@datawheel/canon-stats",
-  "version": "0.3.14",
+  "version": "0.3.15",
   "description": "Reusable statistical and complexity calculations using NodeJS and Express",
-  "main": "src/api/index.js",
+  "main": "src/api/baseRoute.js",
   "scripts": {
     "build": "rm -rf src/ && mkdir src && npx babel app/ --out-dir src --copy-files && rm -rf src/api/index.js",
     "dev": "nodemon app/api/index.js"
