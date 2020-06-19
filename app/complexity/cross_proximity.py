@@ -20,9 +20,9 @@ def cross_proximity(rcas_a, rcas_b):
     kp0_b = rcas_b.sum(axis=0)
     kp0_b = kp0_b.values.reshape((1, len(kp0_b)))
 
-    # Calculates two possible cross proximity values
-    a = numerator.divide(kp0_b)
-    b = numerator.divide(kp0_a.T)
+    # Calculates two possible cross proximity values and replace posibles NaN values
+    a = numerator.divide(kp0_b).fillna(0)
+    b = numerator.divide(kp0_a.T).fillna(0)
 
     # Compares the two previous arrays, and keeps minimum value of each cell
     cross_proximity = pd.DataFrame(
