@@ -108,7 +108,7 @@ module.exports = function(app) {
   });
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({endpoints: options, version: "0.4.0"})
+    return res.json({endpoints: options, version: "0.4.1"})
   });
 
 }
