@@ -1,4 +1,5 @@
 import json
+import networkx as nx
 import numpy as np
 import os
 import pandas as pd
@@ -495,6 +496,67 @@ class Complexity:
             df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
 
         self.base.to_output(df)
+
+    def _network(self):
+        dd1_id = self.dd1_id
+        dd2_id = self.dd2_id
+        measure = self.measure
+        df = self.load_step()
+        df = pivot_data(df, dd1_id, dd2_id, self.rca_measure)
+
+        # Calculates proximity
+        phi = proximity(df)
+        keep = np.triu(np.ones(phi.shape)).astype(bool).reshape(phi.size)
+
+        source_id = f"{dd2_id} Source"
+        target_id = f"{dd2_id} Target"
+
+        df_stacked = pd.DataFrame(phi.stack(dropna=False)[keep])
+        df_stacked.index.names = [source_id, target_id]
+        df_stacked = df_stacked.reset_index().rename(columns={0: "value"})
+        df_stacked = df_stacked.fillna(0)
+
+        """
+        df_stacked[source_id] = df_stacked[source_id].astype(str)
+        df_stacked[target_id] = df_stacked[target_id].astype(str)
+        """
+        graph = nx.Graph()
+
+        def nodes_add(col, prefix=""):
+            for cell in col:
+                #graph.add_node("{}".format(prefix, str(col)))
+                graph.add_node(str(col))
+
+
+        def edges_add(df):
+            for s in df.itertuples():
+                graph.add_edge(
+                    s._1, 
+                    s._2,
+                    weight=s.value
+                )
+
+        nodes_add(df_stacked[source_id].unique())
+
+        edges_add(df_stacked)
+
+        graph = nx.maximum_spanning_tree(graph)
+        # y = np.percentile(df_stacked.value, 95)
+        y = 0.65
+
+        edges_add(df_stacked[df_stacked.value >= y])
+
+        layout = getattr(nx, "spring_layout")
+        pos = layout(graph)
+
+        network = {
+            "edges": [{"source": edge[0], "target": edge[1]} for edge in list(graph.edges)],
+            "nodes": [{"id": node, "x": float(pos[node][0]), "y": float(pos[node][1])} for node in df_stacked[source_id].unique()]
+        }
+
+        print(json.dumps({
+        "data": network
+        }))
 
 
     def _rca(self):
