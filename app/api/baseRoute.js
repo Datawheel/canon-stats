@@ -85,8 +85,8 @@ module.exports = function(app) {
         );
         
         if (py.signal !== "SIGTERM") {
-          let respString = py.stdout.toString();
-          let traceback = py.stderr.toString();
+          const respString = py.stdout.toString();
+          const traceback = py.stderr.toString();
   
           // return response
           try {
