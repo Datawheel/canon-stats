@@ -7,20 +7,24 @@ const {
   CANON_PORT,
   CANON_STATS_API,
   CANON_STATS_BASE_URL,
+  CANON_STATS_MAX_BUFFER,
   CANON_STATS_PYTHON_ENGINE,
+  CANON_STATS_TIMEOUT,
   OLAP_PROXY_SECRET
 } = process.env;
 
 const api = CANON_STATS_API;
 const port = CANON_PORT || "8000";
-const spawn = require("child_process").spawn;
+const spawn = require("child_process").spawnSync;
+const timeout = CANON_STATS_TIMEOUT * 1 || 0;
+const maxBuffer = CANON_STATS_MAX_BUFFER * 1 || 4096*4096;
 
 const BASE_URL = CANON_STATS_BASE_URL || "/api/stats";
 const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
 
 const options = {
-  "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
-  "network": ["network"],
+  "complexity": ["eci", "network", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
+  "network": [],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"]
 };
 
@@ -72,21 +76,15 @@ Object.entries(options).forEach(d => {
       const pyPath = path.join(__dirname, `../${d[0]}_endpoints.py`);
       const py = spawn(
         ENGINE,
-        ["-W", "ignore", pyPath, apiQuery, api, endpoint, apiHeaders, authLevel, apiServerHeaders]
+        ["-W", "ignore", pyPath, apiQuery, api, endpoint, apiHeaders, authLevel, apiServerHeaders],
+        {timeout, maxBuffer}
       );
-      let respString = "";
-      let traceback = "";
-  
-      // build response string based on results of python script
-      py.stdout.on("data", data => {
-        respString += data.toString()
-      });
-      // catch errors
-      py.stderr.on("data", data => {
-        traceback += data.toString();
-      });
-      // return response
-      py.stdout.on("end", () => {
+
+      if (py.signal !== "SIGTERM") {
+        let respString = py.stdout.toString();
+        let traceback = py.stderr.toString();
+
+        // return response
         try {
           const dataResult = JSON.parse(respString);
           return res.json(dataResult);
@@ -100,7 +98,8 @@ Object.entries(options).forEach(d => {
           const errorCode = traceback.includes("This cube is not public") ? 401 : 404;
           return res.status(errorCode).json(output);
         }
-      });
+      }
+      return res.status(408).json({data: [], traceback: "Timeout"});
     });
   });
 });
