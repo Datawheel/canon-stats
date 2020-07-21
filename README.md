@@ -67,7 +67,7 @@ export CANON_STATS_API=https://api.datamexico.org/tesseract
 ```
 Other custom env vars for the library can be found on the table.
 | env var | description | default  | example |
-| - | - | - | - | - |
+| - | - | - | - |
 | `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` | `/api/oec_stats` |
 | `CANON_STATS_TIMEOUT` | Sets the response timeout of a API | `0` | `5000` |
 
@@ -76,8 +76,8 @@ Other custom env vars for the library can be found on the table.
 
 The stats module includes endpoints for doing different calculations. 
 
-### Complexity
+### [Complexity](docs/COMPLEXITY.md)
 Based on Economic Complexity studies, this module calculates different metrics such as RCA, ECI, Proximity, Relatedness, Networks, among other metrics.
 
-### Regressions
+### [Regressions](docs/REGRESSIONS.md)
 Allows to calculate Long-Short Term Models (LSTM) such as Prophet, and statistical models such as OLS, Logit.
