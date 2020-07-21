@@ -66,15 +66,15 @@ For example, the env var used on DataMEXICO is:
 export CANON_STATS_API=https://api.datamexico.org/tesseract
 ```
 Other custom env vars for the library can be found on the table.
-| env var | description | default  | example |
-| - | - | - | - |
-| `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` | `/api/oec_stats` |
-| `CANON_STATS_TIMEOUT` | Sets the response timeout of a API | `0` | `5000` |
+| env var | description | default  |
+|---|---|---|
+| `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` |
+| `CANON_STATS_TIMEOUT` | Sets the response timeout of a API | `undefined` |
 
 
 ## Endpoints availables
 
-The stats module includes endpoints for doing different calculations. 
+This library includes different statistical modules.
 
 ### [Complexity](docs/COMPLEXITY.md)
 Based on Economic Complexity studies, this module calculates different metrics such as RCA, ECI, Proximity, Relatedness, Networks, among other metrics.
