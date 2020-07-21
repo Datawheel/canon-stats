@@ -4,30 +4,35 @@ This module allows to calculate different Economic Complexity measures.
 ## Endpoints
 
 ### ECI 
-`/api/stats/eci`
+*GET* `/api/stats/eci`
 
 ### Opportunity Gain 
-`/api/stats/opportunity_gain`
+*GET* `/api/stats/opportunity_gain`
 
 ### PCI
-`/api/stats/pci`
+*GET* `/api/stats/pci`
 
 ### Proximity
-`/api/stats/proximity`
+*GET* `/api/stats/proximity`
 
 ### RCA
-`/api/stats/rca`
+*GET* `/api/stats/rca`
 
 ### Relatedness
-`/api/stats/relatedness`
+*GET* `/api/stats/relatedness`
 
-## Query structure
+## Syntax
 
-The simplest API needs: `cube` and `rca` params. In the case of `rca`, the structure is: `geo dimension`, `industry/product` dimension, and a `measure`.
+The simplest API needs `cube` and `rca` params. In the case of `rca`, the structure is: `<drilldown1>`, `<drilldown2>`, and `<measure>`. The first two params usually are a geo drilldown, and an industry/occupation/product drilldown.
 ```
 ?cube=<cubeName>&rca=<geo>,<product>,<measure>
 ```
 All the tesseract logiclayer's params are valids, but it is required to use `rca` as param.
+
+### Custom alias
+Sometimes, the drilldown's name is different compared with the object returned. You can use `alias=<alias_drilldown1>,<alias_drilldown2>`.
+
+For example, on OEC you will have `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Internally, canon-stats will use `alias` param names.
 
 ## Optional query params
 
