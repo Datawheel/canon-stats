@@ -16,8 +16,6 @@ const api = CANON_STATS_API;
 const port = CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
 const timeout = CANON_STATS_TIMEOUT * 1;
-let timeoutId = null;
-let timedOut = false;
 
 const BASE_URL = CANON_STATS_BASE_URL || "/api/stats";
 const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
@@ -54,6 +52,8 @@ module.exports = function (app) {
         const {headers, query, user} = req;
         const {debug} = req.query;
         const {apiToken, authLevel} = OLAP_PROXY_SECRET ? getApiToken(headers, user) : {authLevel: 0};
+        let timeoutId = null;
+        let timedOut = false;
 
         const config = OLAP_PROXY_SECRET ? {
           "x-tesseract-jwt-token": apiToken
@@ -125,11 +125,11 @@ module.exports = function (app) {
             console.log("---canon-stats timeout---");
             console.log(`endpoint: ${endpoint}`);
             console.log(`apiQuery: ${apiQuery}`);
-            console.log(err);
             try {
               process.kill(-py.pid, "SIGKILL");
             } catch (e) {
               console.log("Cannot kill canon-stats process!");
+              console.log(e);
             }
           }, timeout);
         }
