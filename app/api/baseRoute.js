@@ -1,7 +1,8 @@
 const express = require("express");
 const app = express(),
       jwt = require("jsonwebtoken"),
-      path = require("path");
+      path = require("path"),
+      yn = require("yn");
 
 const {
   CANON_PORT,
@@ -84,9 +85,7 @@ module.exports = function (app) {
         py.stdout.on("data", data => respString += data.toString());
         
         // catch stderr errors
-        py.stderr.on("data", data => {
-          traceback += data.toString();
-        });
+        py.stderr.on("data", data => traceback += data.toString());
 
         // return response
         py.stdout.on("end", () => {
@@ -98,7 +97,7 @@ module.exports = function (app) {
             const output = {
               error: error.toString()
             };
-            if (debug && debug === "true") output.traceback = traceback.split("\r\n");
+            if (yn(debug)) output.traceback = traceback.split("\r\n");
             const errorCode = traceback.includes("This cube is not public") ? 401 : 404;
             return res.status(errorCode).json(output);
           }
@@ -109,14 +108,12 @@ module.exports = function (app) {
           if (timedOut) {
             return; // timeoutId has already been called
           }
-      
           // Cancel the timeout timer (defined below).
           if (timeoutId) {
             clearTimeout(timeoutId);
           }
-      
           // Log when process closes
-          if (debug && debug === "true") console.log("process closed");
+          if (yn(debug)) console.log("process closed");
         });
 
         // ensure timeout is set and is an actual number
@@ -128,6 +125,7 @@ module.exports = function (app) {
             try {
               process.kill(-py.pid, "SIGKILL");
             } catch (e) {
+              py.kill();
               console.log("Cannot kill canon-stats process!");
               console.log(e);
             }
