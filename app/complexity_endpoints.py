@@ -358,33 +358,32 @@ class Complexity:
 
         return df
 
-    def transform_proximity_step(self, df, filters):
+
+    def transform_proximity_step(self, df):
         dd1 = self.dd2
         dd1_id = self.dd1_id
         dd2 = self.dd2
         dd2_id = self.dd2_id
         proximity_measure = self.proximity_measure
 
-        if filters:
-            df = df[df["{} ID Source".format(dd1)].isin(filters)]
-
         filter_var = "filter_{}".format(dd2)
 
         if filter_var in params and "{} ID Source".format(dd2) in list(df):
-            df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
+            df = df.loc[np.in1d(df["{} ID Source".format(dd2)].astype(str), [str(params[filter_var])])]
 
         filter_val = "proximity_min"
 
         if filter_val in params:
-            df = df[df[proximity_measure] > float(params[filter_val])]
+            df = df[df[proximity_measure] >= float(params[filter_val])]
 
         if self.parents:
             parents = self.cubes_cache[self.cube_name]["parents"]
             dd2_parents = parents[self.dd2_unique]
             dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
 
-            a = self.labels[dd2_parents].drop_duplicates().rename(columns={dd2_id: "{} Source".format(dd2_id)}).dropna()
-            b = self.labels[dd2_parents].drop_duplicates().rename(columns={dd2_id: "{} Target".format(dd2_id)}).dropna()
+            temp = self.labels[dd2_parents].drop_duplicates().dropna()
+            a = temp.copy().rename(columns={dd2_id: "{} Source".format(dd2_id)})
+            b = temp.copy().rename(columns={dd2_id: "{} Target".format(dd2_id)})
 
             source_columns = {parent: "{} Source".format(parent) for parent in dd2_parents}
             target_columns = {parent: "{} Target".format(parent) for parent in dd2_parents}
@@ -393,13 +392,15 @@ class Complexity:
             df = df.merge(b, on=["{} Target".format(dd2_id)], how="left").fillna(0).rename(columns=target_columns)
 
         else:
-            a = self.labels[[self.dd2, dd2_id]].drop_duplicates().rename(columns={dd2_id: "{} Source".format(dd2_id)}).dropna()
-            b = self.labels[[self.dd2, dd2_id]].drop_duplicates().rename(columns={dd2_id: "{} Target".format(dd2_id)}).dropna()
+            temp = self.labels[[self.dd2, dd2_id]].drop_duplicates().dropna()
+            a = temp.copy().rename(columns={dd2_id: "{} Source".format(dd2_id)})
+            b = temp.copy().rename(columns={dd2_id: "{} Target".format(dd2_id)})
 
             df = df.merge(a, on=["{} Source".format(dd2_id)], how="left").fillna(0).rename(columns={dd2: "{} Source".format(dd2)})
             df = df.merge(b, on=["{} Target".format(dd2_id)], how="left").fillna(0).rename(columns={dd2: "{} Target".format(dd2)})
 
         return df
+
 
     def _complexity(self):
         df = self.load_step()
@@ -517,29 +518,32 @@ class Complexity:
         dd2_id = self.dd2_id
         rca_measure = self.rca_measure
 
+        if "filter_{}".format(dd1) in params:
+            temp = df.loc[np.in1d(df[dd1_id].astype(str), [str(params["filter_{}".format(dd1)])])].copy()
+
         df_labels = df[[dd2_id]].drop_duplicates()
 
-        #gets products ids where Country has RCA > 1, if Country filter is defined as param
-        try:
-            filters_rca = list(df[(df[rca_measure] > 1) & (df[dd1_id] == params["filter_{}".format(dd1)])]["{} ID".format(dd2)])
-        except: 
-            filters_rca = False
-
         rcas = pivot_data(df, dd1_id, dd2_id, rca_measure)
+
         df = proximity(rcas)
 
         df = df.reset_index()
         df = df.rename(columns={dd2_id: "{} Target".format(dd2_id)})
         df = pd.melt(df, id_vars="{} Target".format(dd2_id), value_name=self.proximity_measure)
-        df = df.rename(columns={dd2_id: "{} Source".format(dd2_id)})
-        df = df[df["{} Source".format(dd2_id)] != df["{} Target".format(dd2_id)]]
+        df = df.rename(columns={dd2_id: "{} Source".format(dd2_id)}).copy()
+        
+        if "filter_{}".format(dd1) not in params:
+            df = df[df["{} Source".format(dd2_id)] != df["{} Target".format(dd2_id)]]
 
         for item in ["Source", "Target"]:
             df = df.merge(df_labels, left_on="{} {}".format(dd2_id, item), right_on=dd2_id)
             df = df.rename(columns={dd2: "{} {}".format(dd2, item)})
             df = df.drop(columns=[dd2_id])
 
-        output = self.transform_proximity_step(df, filters_rca)
+        output = self.transform_proximity_step(df)
+
+        if "filter_{}".format(dd1) in params:
+            output = output.merge(temp, left_on="{} Target".format(dd2_id), right_on=dd2_id)
 
         self.base.to_output(output)
 
