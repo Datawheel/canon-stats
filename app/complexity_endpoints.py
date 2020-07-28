@@ -2,6 +2,7 @@ import json
 import numpy as np
 import os
 import pandas as pd
+import re
 import requests
 import sys
 
@@ -11,7 +12,7 @@ from complexity.proximity import proximity
 from complexity.rca import rca
 from complexity.relatedness import relatedness
 from base import BaseClass
-from cache import InternalCache
+from cache import get_hash_id, InternalCache, RedisCache
 
 
 API = str(sys.argv[2]) + "/data"
@@ -22,6 +23,13 @@ server_headers = sys.argv[6]
 CUBES_API = str(sys.argv[2]) + "/cubes"
 cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
 
+def yn(x):
+    return x and x == "true"
+
+is_cache = yn(os.environ["CANON_STATS_CACHE"])
+
+def filtered_params(params):
+    return {k:params[k] for k in params if re.match("(?!.*(debug|filter_|options|ranking)).*$", k)}
 
 def filter_threshold(x, right=False):
     if "Right" in x[0]:
@@ -82,6 +90,7 @@ class Complexity:
         eciThreshold = params.get("eciThreshold")
 
         self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
+        self.cache = RedisCache()
         self.cube_name = params.get("cube")
         self.cubes_cache = cubes_cache
         self.dd1 = dd1
@@ -94,6 +103,7 @@ class Complexity:
         self.dd1_id = dd1_id
         self.dd2 = dd2
         self.dd2_id = dd2_id
+        self.df_cube_right = pd.DataFrame([])
         self.eci_measure = "{} ECI".format(measure)
         self.endpoint = str(sys.argv[3])
         self.iterations = int(params.get("iterations")) if "iterations" in params else 20
@@ -201,7 +211,7 @@ class Complexity:
         Requests data from tesseract endpoint, and calculates RCA index
         """
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
-        drilldowns = "{},{}".format(dd1, dd2)
+        drilldowns = f"{dd1},{dd2}"
         _params = params.copy()
         _params["drilldowns"] = drilldowns
         _params["measures"] = measure
@@ -211,57 +221,78 @@ class Complexity:
 
         # Gets data and converts request into dataframe
         if self.method in ["subnational", "relatedness"]:
-            paramsLeft = {}
-            for key in _params.keys():
-                param_key = _params.get(key)
-                if "Right" not in key and "filter_" not in key:
-                    paramsLeft[key] = param_key
-
-            df_subnat = self.base.get_data(paramsLeft)
-
-            threshold_items = dict(filter(lambda x: filter_threshold(x), self.threshold.items()))
-            df_subnat = self.threshold_step(df_subnat, threshold_items)
-
-            p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
-
-            col_sums = p.sum(axis=1)
-            col_sums = col_sums.values.reshape((len(col_sums), 1))
-            subnat_rca_numerator = np.divide(p, col_sums)
-
-            dd1_right, dd2_right, measure_right =  _params.get("rcaRight").split(",")
+            params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
 
             # Calculates denominator
-            params_right = {
-                "cube": _params.get("cubeRight"),
-                "drilldowns": "{},{}".format(dd1_right, dd2_right),
-                "measures": measure_right,
-                "Year": _params.get("YearRight")
-            }
+            dd1_right, dd2_right, measure_right =  _params.get("rcaRight").split(",")
+            params_right = {k.replace("Right", ""):_params[k] for k in _params if re.match("\w+Right", k) and re.match("(?!.*(alias|rca)).*$", k)}
+            params_right["drilldowns"] = f"{dd1_right},{dd2_right}"
+            params_right["measures"] = measure_right
 
-            df_right = self.base.get_data(params_right)
-            threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
-            df_right = self.threshold_step(df_right, threshold_items)
+            right_regex = "\w+Right"
+            params_right_key = {k:_params[k] for k in _params if re.match(right_regex, k) or re.match(right_regex, _params[k])}
 
-            if params.get("aliasRight"):
-                dd1_right, dd2_right = params.get("aliasRight").split(",")
+            params_id = get_hash_id(filtered_params(params_left))
+            params_right_id = get_hash_id(filtered_params(params_right_key))
+            data = self.cache.get(params_id) if is_cache else None
 
-            dd1_right_id = get_dd_id(dd1_right)
-            dd2_right_id = get_dd_id(dd2_right)
+            # Checks if you are using cache
+            if is_cache and isinstance(data, pd.DataFrame):
+                df_rca_subnat = data
+                df_right = self.cache.get(f"subnational_{params_right_id}")
+                self.labels = self.cache.get(f"labels_{params_id}")
+                self.df_cube_right = self.cache.get(f"cube_right_{params_right_id}")
 
-            q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
+                if params.get("aliasRight"):
+                    dd1_right, dd2_right = params.get("aliasRight").split(",")
 
-            row_sums = q.sum(axis=0)
-            total_sum = q.sum().sum()
-            rca_denominator = np.divide(row_sums, total_sum)
+                dd1_right_id = get_dd_id(dd1_right)
+                dd2_right_id = get_dd_id(dd2_right)
 
-            rca_subnat = subnat_rca_numerator / rca_denominator
+            # Calcules for the first time the RCA matrix
+            else:
+                df_subnat = self.base.get_data(params_left)
 
-            df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
-            df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
-            if "variable" in list(df_rca_subnat):
-                df_rca_subnat = df_rca_subnat.rename(columns={"variable": dd2_id})
+                threshold_items = dict(filter(lambda x: filter_threshold(x), self.threshold.items()))
+                df_subnat = self.threshold_step(df_subnat, threshold_items)
 
-            self.labels = df_subnat
+                p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
+
+                col_sums = p.sum(axis=1)
+                col_sums = col_sums.values.reshape((len(col_sums), 1))
+                subnat_rca_numerator = np.divide(p, col_sums)
+
+                df_right = self.base.get_data(params_right)
+                threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
+                df_right = self.threshold_step(df_right, threshold_items)
+
+                if params.get("aliasRight"):
+                    dd1_right, dd2_right = params.get("aliasRight").split(",")
+
+                dd1_right_id = get_dd_id(dd1_right)
+                dd2_right_id = get_dd_id(dd2_right)
+
+                q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
+                self.df_cube_right = q
+
+                row_sums = q.sum(axis=0)
+                total_sum = q.sum().sum()
+                rca_denominator = np.divide(row_sums, total_sum)
+
+                rca_subnat = subnat_rca_numerator / rca_denominator
+
+                df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
+                df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
+                if "variable" in list(df_rca_subnat):
+                    df_rca_subnat = df_rca_subnat.rename(columns={"variable": dd2_id})
+
+                self.labels = df_subnat
+
+                if is_cache:
+                    self.cache.set(f"subnational_{params_right_id}", df_right)
+                    self.cache.set(f"labels_{params_id}", df_subnat)
+                    self.cache.set(params_id, df_rca_subnat)
+                    self.cache.set(f"cube_right_{params_right_id}", q)
 
             if self.method == "subnational":
                 return df_rca_subnat
@@ -275,29 +306,43 @@ class Complexity:
             else:
                 return pd.DataFrame([])
         else:
-            df = self.base.get_data(_params)
+            # Generates an unique ID for the query
+            params_id = get_hash_id(filtered_params(_params))
+            data = self.cache.get(params_id) if is_cache else None
 
-            dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+            # Checks if you are using cache
+            if is_cache and isinstance(data, pd.DataFrame):
+                output = data
+                self.labels = self.cache.get(f"labels_{params_id}")
 
-            # Use of the population threshold 
-            df = self.threshold_step(df)
-
-            # Copies original dataframe
-            df_final = df.copy()
-            self.labels = df_final
-
-            # Calculates RCA index
-            df = pivot_data(df, dd1_id, dd2_id, measure)
-            output = rca(df)
-            output = output.reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
+            # Calcules for the first time the RCA matrix
+            else:
+                # Gets data from OLAP cube
+                df = self.base.get_data(_params)
+                # Loads drilldowns
+                dd1, dd2, dd1_id, dd2_id = _load_alias_params()
+                # Implements thresholds on dataset before to calculate RCA
+                df = self.threshold_step(df)
+                # Generates a copy of the original dataframe
+                df_copy = df.copy()
+                self.labels = df_copy
+                # Calculates RCA matrix
+                df = pivot_data(df, dd1_id, dd2_id, measure)
+                output = rca(df)
+                # Converts RCA matrix into a list
+                output = output.reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
+                # Stores the dataframe using Redis
+                if is_cache:
+                    self.cache.set(f"labels_{params_id}", df_copy)
+                    self.cache.set(params_id, output)
 
             return output
 
 
     def get(self):
         def func_not_found():
-            print('No Function ' + self.name + ' Found!')
-        func_name = "_{}".format(self.name)
+            print(f"No Function {self.name} Found!")
+        func_name = f"_{self.name}"
         func = getattr(self, func_name, func_not_found) 
         func()
 
@@ -305,13 +350,15 @@ class Complexity:
     def transform_step(self, df, dds, measure):
         if self.ranking:
             df = df.sort_values(measure, ascending=False)
-            df["{} Ranking".format(measure)] = range(1, df.shape[0] + 1)
+            df[f"{measure} Ranking"] = range(1, df.shape[0] + 1)
 
         for dd in dds:
-            filter_var = "filter_{}".format(dd)
+            filter_var = f"filter_{dd}"
             filter_id = get_dd_id(dd)
             if filter_var in params and filter_id in list(df):
-                df = df[df[filter_id].astype(str) == str(params[filter_var])]
+                column = df[filter_id].astype(str)
+                param = str(params[filter_var])
+                df = df.loc[np.in1d(column, param)]
 
         limit = self.options.get("limit")
         sort = self.options.get("sort")
@@ -382,12 +429,15 @@ class Complexity:
             rcas = df.copy()
             rcas[rcas >= 1] = 1
             rcas[rcas < 1] = 0
+            # Removes small data related with drilldown1
             if dd1 in self.eciThreshold:
                 value = int(self.eciThreshold[dd1])
                 cols = np.sum(rcas, axis=1)
                 cols = list(cols[cols > value].index)
                 df = df[df.index.isin(cols)]
                 df_copy = df_copy[df_copy[dd1_id].isin(cols)]
+
+            # Removes small data related with drilldown2
             if dd2 in self.eciThreshold:
                 value = int(self.eciThreshold[dd2])
                 rows = np.sum(rcas, axis=0)
@@ -399,29 +449,7 @@ class Complexity:
 
         # Calculates ECI / PCI for subnational territories
         if self.method == "subnational":
-            # If method="subnational", you need to defined a comparison cube
-            dd1_right, dd2_right, measure_right =  params.get("rcaRight").split(",")
-
-            # Calculates RCA matrix using a comparison cube
-            params_right = {
-                "cube": params.get("cubeRight"),
-                "drilldowns": "{},{}".format(dd1_right, dd2_right),
-                "measures": measure_right,
-                "Year": params.get("YearRight")
-            }
-            df_right = self.base.get_data(params_right)
-            threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
-            df_right = self.threshold_step(df_right, threshold_items)
-
-            # Gets dd1/dd2 ids for comparison cube
-            if params.get("aliasRight"):
-                dd1_right, dd2_right = params.get("aliasRight").split(",")
-            dd1_right_id = get_dd_id(dd1_right)
-            dd2_right_id = get_dd_id(dd2_right)
-
-            # Pivots dataframe
-            df_right = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
-
+            df_right = self.df_cube_right
             # Calculates ECI / PCI for comparison cube
             eci, pci = complexity(rca(df_right), iterations)
             df_pci = pd.DataFrame(pci).rename(columns={0: complexity_measure}).reset_index()
@@ -434,7 +462,6 @@ class Complexity:
             eci, pci = complexity(df, iterations)
             complexity_data = eci if self.endpoint == "eci" else pci
             results = pd.DataFrame(complexity_data).rename(columns={0: complexity_measure}).reset_index()
-            # results = df_labels.merge(results, on=complexity_dd_id)
 
         results = self.transform_step(results, [dd1, dd2], complexity_measure)
 

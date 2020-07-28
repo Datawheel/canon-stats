@@ -16,8 +16,8 @@ const {
 const api = CANON_STATS_API;
 const port = CANON_PORT || "8000";
 const spawn = require("child_process").spawn;
-// const timeout = CANON_STATS_TIMEOUT * 1;
-const timeout = 1000 * 1;
+const timeout = undefined * 1;
+// const timeout = 5000 * 1;
 
 const BASE_URL = CANON_STATS_BASE_URL || "/api/stats";
 const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
@@ -53,8 +53,8 @@ const serverApiToken = OLAP_PROXY_SECRET ? jwt.sign(
   {expiresIn: "30m"}
 ) : "";
 
-Object.entries(options).forEach(d => {
-  d[1].forEach(endpoint => {
+for (const d of Object.entries(options)) {
+  for (const endpoint of d[1]) {
     app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
       const {headers, query, user} = req;
       const {debug} = req.query;
@@ -103,7 +103,7 @@ Object.entries(options).forEach(d => {
           const output = {
             error: error.toString()
           };
-          if (yn(debug)) output.traceback = respString.split("\r\n");
+          if (yn(debug)) output.traceback = traceback.split("\r\n");
           const errorCode = traceback.includes("This cube is not public") ? 401 : 404;
           return res.status(errorCode).json(output);
         }
@@ -154,8 +154,8 @@ Object.entries(options).forEach(d => {
       });
 
     });
-  });
-});
+  };
+};
 
 
 app.listen(port, () => {

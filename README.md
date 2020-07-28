@@ -71,6 +71,21 @@ Other custom env vars for the library can be found on the table.
 | `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` |
 | `CANON_STATS_TIMEOUT` | Sets the response timeout of a API | `undefined` |
 
+## Cache
+This library includes a module that stores into a cache the calculations used on Economic Complexity. This options currently works using `Redis` database.
+
+Please make sure that `Redis` is running on your server before to use this module.
+
+```
+sudo apt install redis-server
+```
+On your env vars, you will need to include
+```
+export CANON_STATS_CACHE="true"
+export CANON_STATS_CACHE_HOST="localhost"
+export CANON_STATS_CACHE_PASSWORD=""
+export CANON_STATS_CACHE_PORT=6379
+```
 
 ## Endpoints availables
 
