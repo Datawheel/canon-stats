@@ -16,15 +16,16 @@ from cache import get_hash_id, InternalCache, RedisCache
 
 
 API = str(sys.argv[2]) + "/data"
-params = json.loads(sys.argv[1])
-headers = sys.argv[4]
-auth_level = int(sys.argv[5]) or 0
-server_headers = sys.argv[6]
 CUBES_API = str(sys.argv[2]) + "/cubes"
-cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
+auth_level = int(sys.argv[5]) or 0 # Auth level
+headers = json.loads(sys.argv[4]) # Headers
+params = json.loads(sys.argv[1]) # Query params
+# server_headers = sys.argv[6]
+
+cubes_cache = InternalCache(CUBES_API, headers).cubes
 
 def yn(x):
-    return x and x == "true"
+    return x and x in ["true", "1", True]
 
 is_cache = yn(os.environ["CANON_STATS_CACHE"])
 
@@ -89,7 +90,7 @@ class Complexity:
         threshold = params.get("threshold")
         eciThreshold = params.get("eciThreshold")
 
-        self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
+        self.base = BaseClass(API, headers, auth_level, cubes_cache)
         self.cache = RedisCache()
         self.cube_name = params.get("cube")
         self.cubes_cache = cubes_cache
@@ -153,7 +154,7 @@ class Complexity:
                         pop_params["time"] = "year.latest"
 
                     # Calls population API
-                    pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
+                    pop_df = BaseClass(POP_API, headers, auth_level, cubes_cache).get_data(pop_params)
 
                     # Gets list of country_id's that has a value over the threshold
                     dd_geo_id = self.dd1_right_id if is_right else dd1_id
@@ -188,7 +189,7 @@ class Complexity:
                     pop_params["time"] = "year.latest"
 
                 # Calls population API
-                pop_df = BaseClass(POP_API, json.loads(headers), auth_level, cubes_cache).get_data(pop_params)
+                pop_df = BaseClass(POP_API, headers, auth_level, cubes_cache).get_data(pop_params)
 
                 # Gets list of country_id's that has a value over the threshold
                 list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
@@ -210,6 +211,7 @@ class Complexity:
         """
         Requests data from tesseract endpoint, and calculates RCA index
         """
+        # Creates a dict with params
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
         drilldowns = f"{dd1},{dd2}"
         _params = params.copy()
