@@ -4,8 +4,6 @@ const app = express(),
       path = require("path"),
       yn = require("yn");
 
-const version = require("./package.json");
-
 const {
   CANON_PORT,
   CANON_STATS_API,
@@ -152,6 +150,6 @@ module.exports = function (app) {
   };
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({ endpoints: options, version: "0.6.0" });
+    return res.json({ endpoints: options, version: process.env.npm_package_version });
   });
 };

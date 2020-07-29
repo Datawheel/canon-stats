@@ -1,5 +1,7 @@
 # Complexity
-This module allows to calculate different Economic Complexity measures.
+As an academic field, Economic Complexity studies the geography and dynamics of economic activities using methods inspired in ideas from complex systems, networks, and computer science.
+
+This module allows to calculate Economic Complexity measures. For further references about methodology and implicances of Economic Complexity itself, you can visit [oec.world](https://oec.world/en/resources/methods#economic-complexity).
 
 ## Endpoints
 
@@ -22,25 +24,35 @@ Calculates Product Complexity Index (PCI).
 ### RCA
 *GET* `/api/stats/rca`
 
-Calculates Revealed Comparative Advantages (RCA)
+Calculates Revealed Comparative Advantages (RCA).
 
 ### Relatedness
 *GET* `/api/stats/relatedness`
 
+Calculates Relatedness.
+
 ## Syntax
 
-The simplest API needs requires two params: `cube` and `rca`. In the case of `rca`, the structure is: `<drilldown1>`, `<drilldown2>`, and `<measure>`. The first two params usually are a geo drilldown, and an industry/occupation/product drilldown. All the tesseract logiclayer (LL)'s params are valids.
+Complexity uses tesseract' logiclayer (LL) queries as reference, and the majority are valid params. The simplest API requires to define two params: `cube` and `rca`. In the case of `rca`, the structure is: `<drilldown1>`, `<drilldown2>`, and `<measure>`. The first two params usually are a geo dimension (country, regions, locations), a productive (industry/occupation/product) dimension; and measure is the value used for aggregations.
 ```
 ?cube=<cubeName>&rca=<drilldown1>,<drilldown2>,<measure>
 ```
 
+IMPORTANT: You can use any `cut` based on LL format, like `&Year=<Year>`, `&Flow=1`, among others. Just remember those cuts must be valid drilldowns.
+
 ## Optional query params
 
 ### alias
-Sometimes, the drilldown's name is different compared with the object returned. For example, on OEC you will have `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Internally, canon-stats will use `alias` param names. You can use `alias=<alias_drilldown1>,<alias_drilldown2>`.
+Sometimes, the drilldown's name is different compared with the object returned by the API. For example, on OEC you will have `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Internally, canon-stats will use `alias` param names. You can use `alias=<alias_drilldown1>,<alias_drilldown2>`.
+
+### eciThreshold
+*Only valid for eci / pci endpoints*. Removes territories / products if they have less than N. Allows to remove noise before to calculate ECI / PCI.
+```
+&eciThreshold=Country:10,HS4:15
+```
 
 ### filter_*
-If you want to do some filter on the data.
+Allows to filter the results by a drilldown. For example, `&filter_Country=sachl`, `&filter_HS4=10101`. This property requires the same name used on `rca`. If you defined `alias` on your query, you need to use those names.
 
 ### method
 
@@ -56,9 +68,12 @@ Customize the output options for each endpoint. Options availables are `limit` a
 
 For example, if you need the top-5 elements, you can use: `options=limit:5,sort:desc`.
 
+### ranking 
+`(boolean)` Includes a ranking object based on the endpoint that you are using. `&ranking=true`
+
 ### threshold
 
-This options allows you to remove noise from the data before to do complexity calculations. You can do a threshold for any drilldown defined on `rca` param. Those thresholds are based on `measure`. If your queries uses `alias`, you will need to set up those drilldowns here.
+This options allows you to remove noise from the data before to do calculations. You can do a threshold for any drilldown defined on `rca` param. Those thresholds are based on `measure`. If your queries uses `alias`, you will need to set up those drilldowns here.
 ```
 threshold=Country:1000000,HS4:100
 ```
