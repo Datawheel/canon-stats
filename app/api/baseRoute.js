@@ -4,6 +4,8 @@ const app = express(),
       path = require("path"),
       yn = require("yn");
 
+const version = require("./package.json");
+
 const {
   CANON_PORT,
   CANON_STATS_API,
@@ -47,8 +49,8 @@ const serverApiToken = OLAP_PROXY_SECRET ? jwt.sign({
 }, OLAP_PROXY_SECRET, {expiresIn: "30m"}) : "";
 
 module.exports = function (app) {
-  Object.entries(options).forEach(d => {
-    d[1].forEach(endpoint => {
+  for (const d of Object.entries(options)) {
+    for (const endpoint of d[1]) {
       app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
         const {headers, query, user} = req;
         const {debug} = req.query;
@@ -150,10 +152,10 @@ module.exports = function (app) {
         });
 
       });
-    });
-  });
+    };
+  };
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({endpoints: options, version: "0.5.2"});
+    return res.json({endpoints: options, version: "0.6.0"});
   });
 };
