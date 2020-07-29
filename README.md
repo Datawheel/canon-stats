@@ -79,12 +79,11 @@ Please make sure that `Redis` is running on your server before to use this modul
 ```
 sudo apt install redis-server
 ```
+
 On your env vars, you will need to include
 ```
 export CANON_STATS_CACHE="true"
-export CANON_STATS_CACHE_HOST="localhost"
-export CANON_STATS_CACHE_PASSWORD=""
-export CANON_STATS_CACHE_PORT=6379
+export CANON_STATS_CACHE_URL="redis://[[username]:[password]]@localhost:6379/0"
 ```
 
 ## Endpoints availables

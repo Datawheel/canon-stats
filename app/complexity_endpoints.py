@@ -104,6 +104,7 @@ class Complexity:
         self.dd2 = dd2
         self.dd2_id = dd2_id
         self.df_cube_right = pd.DataFrame([])
+        self.eciThreshold = dict([item.split(":") for item in eciThreshold.split(",")]) if eciThreshold else {}
         self.eci_measure = "{} ECI".format(measure)
         self.endpoint = str(sys.argv[3])
         self.iterations = int(params.get("iterations")) if "iterations" in params else 20
@@ -120,7 +121,6 @@ class Complexity:
         self.rca_measure = "{} RCA".format(measure)
         self.relatedness_measure = "{} Relatedness".format(measure)
         self.threshold = dict([item.split(":") for item in threshold.split(",")]) if threshold else {}
-        self.eciThreshold = dict([item.split(":") for item in eciThreshold.split(",")]) if eciThreshold else {}
 
 
     def threshold_step(self, df, threshold = {}):
@@ -196,7 +196,7 @@ class Complexity:
 
 
             for dd in [dd1, dd2]:
-                filter_var = "threshold_{}".format(dd)
+                filter_var = f"threshold_{dd}"
                 dd_id = get_dd_id(dd)
                 if filter_var in params and dd_id in list(df_copy):
                     df_temp = df[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
@@ -219,29 +219,43 @@ class Complexity:
         # Removes rca as param
         _params.pop("rca", None)
 
-        # Gets data and converts request into dataframe
+        # Calculates RCA matrix for subnational instance
+        # The idea is to calculate how significant are the exports of a subnational territory
+        # compared to the world.
+        # method accepts "subnational" and "relatedness"
         if self.method in ["subnational", "relatedness"]:
+            # Gets params related with "subnational" cube
             params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
 
-            # Calculates denominator
+            # Gets params related with "world" cube
             dd1_right, dd2_right, measure_right =  _params.get("rcaRight").split(",")
             params_right = {k.replace("Right", ""):_params[k] for k in _params if re.match("\w+Right", k) and re.match("(?!.*(alias|rca)).*$", k)}
             params_right["drilldowns"] = f"{dd1_right},{dd2_right}"
             params_right["measures"] = measure_right
-
             right_regex = "\w+Right"
+
+            # Generates an unique dict based on "world" params
             params_right_key = {k:_params[k] for k in _params if re.match(right_regex, k) or re.match(right_regex, _params[k])}
 
+            # Generates unique ids
             params_id = get_hash_id(filtered_params(params_left))
             params_right_id = get_hash_id(filtered_params(params_right_key))
+
+            # Verifies if there is data stored in the case of subnational and world
             data = self.cache.get(params_id) if is_cache else None
+            df_cube_right = self.cache.get(f"cube_right_{params_right_id}") if is_cache else None
+
+            # Checks if you are using cache
+            is_cube_right = False
+            if is_cache and isinstance(df_cube_right, pd.DataFrame):
+                self.df_cube_right = df_cube_right
+                is_cube_right = True
 
             # Checks if you are using cache
             if is_cache and isinstance(data, pd.DataFrame):
                 df_rca_subnat = data
                 df_right = self.cache.get(f"subnational_{params_right_id}")
                 self.labels = self.cache.get(f"labels_{params_id}")
-                self.df_cube_right = self.cache.get(f"cube_right_{params_right_id}")
 
                 if params.get("aliasRight"):
                     dd1_right, dd2_right = params.get("aliasRight").split(",")
@@ -249,45 +263,53 @@ class Complexity:
                 dd1_right_id = get_dd_id(dd1_right)
                 dd2_right_id = get_dd_id(dd2_right)
 
-            # Calcules for the first time the RCA matrix
             else:
+                # Calculates numerator of the subnational RCA
+                # This numerator is based on subnational data
                 df_subnat = self.base.get_data(params_left)
-
                 threshold_items = dict(filter(lambda x: filter_threshold(x), self.threshold.items()))
                 df_subnat = self.threshold_step(df_subnat, threshold_items)
-
+                self.labels = df_subnat
                 p = pivot_data(df_subnat, dd1_id, dd2_id, measure)
 
+                # Calculates numerator
                 col_sums = p.sum(axis=1)
                 col_sums = col_sums.values.reshape((len(col_sums), 1))
                 subnat_rca_numerator = np.divide(p, col_sums)
 
-                df_right = self.base.get_data(params_right)
-                threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
-                df_right = self.threshold_step(df_right, threshold_items)
+                # Verifies if we have stored
+                if ~is_cube_right:
+                    # Calculates denominator of the subnational RCA
+                    # This denominator is based on "World" data
+                    df_right = self.base.get_data(params_right)
+                    threshold_items = dict(filter(lambda x: filter_threshold(x, True), self.threshold.items()))
+                    df_right = self.threshold_step(df_right, threshold_items)
 
-                if params.get("aliasRight"):
-                    dd1_right, dd2_right = params.get("aliasRight").split(",")
+                    # Updates drilldowns ids, in case to define aliasRight on URL
+                    if params.get("aliasRight"):
+                        dd1_right, dd2_right = params.get("aliasRight").split(",")
+                    dd1_right_id = get_dd_id(dd1_right)
+                    dd2_right_id = get_dd_id(dd2_right)
 
-                dd1_right_id = get_dd_id(dd1_right)
-                dd2_right_id = get_dd_id(dd2_right)
+                    # Pivots data related with cube right, and stores on df_cube_right
+                    q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
+                    self.df_cube_right = q
+                else:
+                    q = df_cube_right
 
-                q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
-                self.df_cube_right = q
-
+                # Calculates denominator
                 row_sums = q.sum(axis=0)
                 total_sum = q.sum().sum()
                 rca_denominator = np.divide(row_sums, total_sum)
 
+                # Calculates subnational RCA
                 rca_subnat = subnat_rca_numerator / rca_denominator
 
+                # Melts dataframe
                 df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
                 df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
-                if "variable" in list(df_rca_subnat):
-                    df_rca_subnat = df_rca_subnat.rename(columns={"variable": dd2_id})
 
-                self.labels = df_subnat
-
+                # If cache is activated, stores RCA subnational matrix, labels, cube right used
                 if is_cache:
                     self.cache.set(f"subnational_{params_right_id}", df_right)
                     self.cache.set(f"labels_{params_id}", df_subnat)
@@ -419,7 +441,6 @@ class Complexity:
 
         complexity_measure = eci_measure if self.endpoint == "eci" else pci_measure
         complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
-        complexity_dd = dd1 if self.endpoint == "eci" else dd2
 
         df_copy = df.copy()
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)

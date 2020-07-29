@@ -55,12 +55,9 @@ def get_str(x):
 
 class RedisCache:
     def __init__(self):
-        HOST = os.environ["CANON_STATS_CACHE_HOST"]
-        PASSWORD = os.environ["CANON_STATS_CACHE_PASSWORD"]
-        PORT = os.environ["CANON_STATS_CACHE_PORT"]
-
+        REDIS_URL = os.environ["CANON_STATS_CACHE_URL"]
         self.context = pa.default_serialization_context()
-        self.r = redis.Redis(host=HOST, password=PASSWORD, port=PORT, db=0)
+        self.r = redis.from_url(REDIS_URL)
 
     def set(self, key, df):
         return self.r.set(key, self.context.serialize(df).to_buffer().to_pybytes())
