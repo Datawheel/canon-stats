@@ -221,10 +221,10 @@ class Complexity:
         # Removes rca as param
         _params.pop("rca", None)
 
-        # Calculates RCA matrix for subnational instance
-        # The idea is to calculate how significant are the exports of a subnational territory
-        # compared to the world.
-        # method accepts "subnational" and "relatedness"
+        # Calculates RCA matrix for subnational cubes
+        # We compare the share of an activity in a local unit (e.g. region, province) with the share of that activity in the world. 
+        # For further references: https://oec.world/en/resources/methods#uses
+        # Methods accepted are "subnational" and "relatedness"
         if self.method in ["subnational", "relatedness"]:
             # Gets params related with "subnational" cube
             params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
@@ -243,17 +243,17 @@ class Complexity:
             params_id = get_hash_id(filtered_params(params_left))
             params_right_id = get_hash_id(filtered_params(params_right_key))
 
-            # Verifies if there is data stored in the case of subnational and world
+            # Gets subnational/world data stored on Redis
             data = self.cache.get(params_id) if is_cache else None
             df_cube_right = self.cache.get(f"cube_right_{params_right_id}") if is_cache else None
 
-            # Checks if you are using cache
+            # Checks if there is world data stored on Redis
             is_cube_right = False
             if is_cache and isinstance(df_cube_right, pd.DataFrame):
                 self.df_cube_right = df_cube_right
                 is_cube_right = True
 
-            # Checks if you are using cache
+            # Checks if there is subnational data stored on Redis
             if is_cache and isinstance(data, pd.DataFrame):
                 df_rca_subnat = data
                 df_right = self.cache.get(f"subnational_{params_right_id}")
@@ -320,6 +320,7 @@ class Complexity:
 
             if self.method == "subnational":
                 return df_rca_subnat
+
             elif self.method == "relatedness":
                 # Copies original dataframe
                 df_final = df_right.copy()
@@ -329,6 +330,8 @@ class Complexity:
                 return df_rca_subnat, output
             else:
                 return pd.DataFrame([])
+
+        # Calculates RCA matrix
         else:
             # Generates an unique ID for the query
             params_id = get_hash_id(filtered_params(_params))
