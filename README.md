@@ -2,7 +2,7 @@
 
 Canon-stats is a node-js library, whose purpose is to simplify the labor of doing complex calculations on the front-end. It integrates with [@datawheel/canon-core](https://github.com/Datawheel/canon) and [tesseract-olap/tesseract](https://github.com/tesseract-olap/tesseract). Both are open source technologies developed and supported by [Datawheel](https://datawheel.us).
 
-This library creates REST-APIs in JSON format, that you can use on the front-end, and it is based on the integration of `python` calculations with `node`, and those calculations are encapsulated on `expressJS`.
+This library creates REST-APIs in JSON format, and it is based on the integration of `python` calculations with `node`, and those calculations are encapsulated on `expressJS`.
 
 ## Installation
 
@@ -12,8 +12,8 @@ Canon-stats requires that the server has previously installed python (For more i
 
 IMPORTANT: We suggest to copy `requirements.txt` of this repository in the repository where you are working.
 
-#### Install the libraries
-##### Local environment
+#### Installing Python Libraries
+##### Local Environment
 
 We suggest to create a virtual environment. You can use `virtualenv` for doing this task.
 ```
@@ -22,7 +22,7 @@ virtualenv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
 ```
-##### Server environment
+##### Server Environment
 On the server, you need to run:
 
 ```
@@ -31,30 +31,37 @@ pip install -r /path/to/file/requirements.txt
 
 Please make sure that each library has been installed successfully.
 
-### Node environment
+### Node Environment
 
-The library will work only in repositories that it has installed `@datawheel/canon-core` previously.
+The library will work only in repositories that have `@datawheel/canon-core` pre-installed.
 
-Since `canon-stats` is a private library, before to install for first time in a repository, it is required to include an authentication for a user called `datawheel-deploy`, who will drive the installation.
+Since `canon-stats` is a private library, before to install it for first time in a repository, it is required to include an authentication for a user called `datawheel-deploy`, who will drive the installation.
 
 ```
 git config --global url."https://a164d0033398f6a1db0be16428b955e83b16b48b:x-oauth-basic@github.com/".insteadOf https://x-oauth-basic@github.com/
 ```
+**IMPORTANT**: Please don't upload this code in a public repository.
+
 Now we can install the repository via `npm`
 ```
 npm i https://github.com/Datawheel/canon-stats
 ```
 
+Installing a specific version:
+```
+npm i https://github.com/Datawheel/canon-stats#0.6.1
+```
+
 Once the package has been installed on any site using `@datawheel/canon-core`, the canon core server will automatically hook up the necessary cache and api routes for the `canon-stats` endpoints.
 
-### Update version installed
+### Updating Version Installed
 
 If you need to update the version installed on your repository, use:
 ```
 npm update @datawheel/canon-stats
 ```
 
-## Environment variables
+## Environment Variables
 
 Canon-stats requires a canon-cms specific env var for the current location of your  tesseract installation.
 ```
@@ -76,6 +83,7 @@ This library includes a module that stores into a cache the calculations used on
 
 Please make sure that `Redis` is running on your server before to use this module.
 
+If you use linux:
 ```
 sudo apt install redis-server
 ```
@@ -85,6 +93,8 @@ On your env vars, you will need to include
 export CANON_STATS_CACHE="true"
 export CANON_STATS_CACHE_URL="redis://[[username]:[password]]@localhost:6379/0"
 ```
+
+For more information about URL used on `CANON_STATS_CACHE_URL`, ([click here](https://redis-py.readthedocs.io/en/stable/#redis.ConnectionPool.from_url)).
 
 ## Endpoints availables
 

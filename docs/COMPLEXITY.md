@@ -10,6 +10,8 @@ This module allows to calculate Economic Complexity measures. For further refere
 
 Calculates Economic Complexity Index (ECI).
 
+*returns* `<measure> ECI`
+
 ### Opportunity Gain 
 *GET* `/api/stats/opportunity_gain`
 
@@ -17,6 +19,8 @@ Calculates Economic Complexity Index (ECI).
 *GET* `/api/stats/pci`
 
 Calculates Product Complexity Index (PCI).
+
+*returns* `<measure> PCI`
 
 ### Proximity
 *GET* `/api/stats/proximity`
@@ -26,24 +30,28 @@ Calculates Product Complexity Index (PCI).
 
 Calculates Revealed Comparative Advantages (RCA).
 
+*returns* `<measure> RCA`
+
 ### Relatedness
 *GET* `/api/stats/relatedness`
 
 Calculates Relatedness.
 
+*returns* `<measure> Relatedness`
+
 ## Syntax
 
-Complexity uses tesseract' logiclayer (LL) queries as reference, and the majority are valid params. The simplest API requires to define two params: `cube` and `rca`. In the case of `rca`, the structure is: `<drilldown1>`, `<drilldown2>`, and `<measure>`. The first two params usually are a geo dimension (country, regions, locations), a productive (industry/occupation/product) dimension; and measure is the value used for aggregations.
+Complexity uses tesseract' logiclayer (LL) query parameters as reference. The simplest API requires to define two params: `cube` and `rca`. In the case of `rca`, the structure is: `<drilldown1>`, `<drilldown2>`, and `<measure>`. The first two params usually are a geo drilldown (country, regions, locations), a productive drilldown (industry/occupation/product); and measure is the value used for aggregations.
 ```
 ?cube=<cubeName>&rca=<drilldown1>,<drilldown2>,<measure>
 ```
 
-IMPORTANT: You can use any `cut` based on LL format, like `&Year=<Year>`, `&Flow=1`, among others. Just remember those cuts must be valid drilldowns.
+IMPORTANT: You can use any `cut` based on LL format, like `&Year=2020`, `&Flow=1`, among others. Just remember those cuts must be valid drilldowns.
 
 ## Optional query params
 
 ### alias
-Sometimes, the drilldown's name is different compared with the object returned by the API. For example, on OEC you will have `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Internally, canon-stats will use `alias` param names. You can use `alias=<alias_drilldown1>,<alias_drilldown2>`.
+Allows to use an `alias` for drilldowns. Sometimes, drilldown's name is different compared with the object returned by the API. For example, on OEC you use `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Syntax used is `alias=<alias_drilldown1>,<alias_drilldown2>`.
 
 ### eciThreshold
 *Only valid for eci / pci endpoints*. Removes territories / products if they have less than N. Allows to remove noise before to calculate ECI / PCI.
@@ -52,28 +60,32 @@ Sometimes, the drilldown's name is different compared with the object returned b
 ```
 
 ### filter_*
-Allows to filter the results by a drilldown. For example, `&filter_Country=sachl`, `&filter_HS4=10101`. This property requires the same name used on `rca`. If you defined `alias` on your query, you need to use those names.
+Filter results on a drilldown. This property requires the same name used on `rca`. If you defined `alias` on your query, you need to use those names.
+```
+&filter_Country=sachl&filter_HS4=10101
+```
 
 ### method
-
-Allows to calculate Economic Complexity measures, comparing a subnational territory with the world, based on the methodology proposed on [oec.world](). Values accepted are `subnational` and `relatedness`.
+Allows to calculate Economic Complexity measures, comparing the share of an activity in a local unit (e.g. region, province) with the share of that activity in the world. 
+This is based on the methodology proposed on [oec.world](https://oec.world/en/resources/methods#uses). Values accepted are `subnational` and `relatedness`.
 
 ### options
 
-Customize the output options for each endpoint. Options availables are `limit` and `sort`.
+Customize the output options of each endpoint. Currently, options are `limit` and `sort`.
 
-`limit`: Limits the number of elements returned by the endpoint.
+* `limit`: Limits the number of elements returned by the endpoint.
+* `sort`: Sorts data available according measure base of the URL. Accepted values are `desc` and `asc`.
 
-`sort`: Sorts data available according measure base of the URL. Accepted values are `desc` and `asc`.
-
-For example, if you need the top-5 elements, you can use: `options=limit:5,sort:desc`.
+For example, if you need the top-5 elements, you can use: 
+```
+options=limit:5,sort:desc
+```
 
 ### ranking 
-`(boolean)` Includes a ranking object based on the endpoint that you are using. `&ranking=true`
+`(boolean)` Includes a ranking object based on the endpoint that you are using. E.g. `&ranking=true`. This ranking is done before to filter by a drilldown (see [filter_*](#filter_*))
 
 ### threshold
-
-This options allows you to remove noise from the data before to do calculations. You can do a threshold for any drilldown defined on `rca` param. Those thresholds are based on `measure`. If your queries uses `alias`, you will need to set up those drilldowns here.
+This options allows to remove noise from the data before to do calculations. You can do a threshold for any drilldown defined on `rca` param. Those thresholds are based on `measure`. If your queries uses `alias`, you will need to set up those drilldowns here.
 ```
 threshold=Country:1000000,HS4:100
 ```
@@ -93,18 +105,17 @@ export CANON_STATS_POPULATION_PARAMS="Indicator:SP.POP.TOTL|drilldowns:Country|m
 
 With that done, the endpoint for population data would be:
 ```
-TODO
+threshold=Country:1000000,HS4:100,Population:1000000
 ```
 ## Examples
 
-### 1) ECI of states in Mexico, using Economic Census data and Total Gross Production as measure
+### 1) ECI of states in Mexico, using Economic Census cube and based on Total Gross Production
 
-URL example
 ```
 /api/stats/eci?cube=inegi_economic_census&rca=State,Industry Group,Total Gross Production&Year=2014
 ```
 
-The endpoint will return the complexity value for each `State` based on iterations using `Industry Group`, and the ECI will be named `Total Gross Production ECI`. Those values are calculated filtering by 2014.
+The endpoint will return the ECI for each `State` based on iterations using `Industry Group`, and the ECI will be named `Total Gross Production ECI`. Those values were calculated filtering by 2014.
 
 ```
 {
