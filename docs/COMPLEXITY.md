@@ -51,7 +51,7 @@ IMPORTANT: You can use any `cut` based on LL format, like `&Year=2020`, `&Flow=1
 ## Optional query params
 
 ### alias
-Allows to use an `alias` for drilldowns. Sometimes, drilldown's name is different compared with the object returned by the API. For example, on OEC you use `rca=Exporter Country,HS4, Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Syntax used is `alias=<alias_drilldown1>,<alias_drilldown2>`.
+Allows to use an `alias` for drilldowns. Sometimes, drilldown's name is different compared with the object returned by the API. For example, on OEC you use `rca=Exporter Country,HS4,Trade Value`, but the object returned by LL is `Country` instead of `Exporter Country`. In this case you must to use `alias=Country,HS4`. Syntax used is `alias=<alias_drilldown1>,<alias_drilldown2>`.
 
 ### eciThreshold
 *Only valid for eci / pci endpoints*. Removes territories / products if they have less than N. Allows to remove noise before to calculate ECI / PCI.

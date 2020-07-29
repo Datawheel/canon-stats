@@ -45,30 +45,32 @@ api/stats/arima?cube=trade_s_jpn_m_hs&drilldowns=Month%2CSection&measures=Trade+
 For the in-sample values doesn't return bounds
 ```
 {
-  "data": {
-    "predictions": [
-      {
-        "Trade Value": 163507725000,
-        "Trade Value Prediction": 776612778.6259537,
-        "Trade Value Lower Bound": null,
-        "Trade Value Upper Bound": null,
-        "Section": "Animal Products",
-        "Section ID": 1,
-        "Date": "2009-01"
-      },
+  "data": [
+    {
+      "Trade Value": 163507725000,
+      "Trade Value Prediction": 776612778.6259537,
+      "Trade Value Lower Bound": null,
+      "Trade Value Upper Bound": null,
+      "Section": "Animal Products",
+      "Section ID": 1,
+      "Date": "2009-01"
+    },
+    ...
+  ]
+}
 ```
 
 For out-of-sample values returns also bounds from arima.forecast
 ```
- {
-        "Trade Value": null,
-        "Trade Value Prediction": 254371299939.10284,
-        "Trade Value Lower Bound": 197551025677.41815,
-        "Trade Value Upper Bound": 311191574200.78754,
-        "Section": "Animal Products",
-        "Section ID": 1,
-        "Date": "2020-02"
-      },
+{
+  "Trade Value": null,
+  "Trade Value Prediction": 254371299939.10284,
+  "Trade Value Lower Bound": 197551025677.41815,
+  "Trade Value Upper Bound": 311191574200.78754,
+  "Section": "Animal Products",
+  "Section ID": 1,
+  "Date": "2020-02"
+},
 ```
 Model info
 ```
