@@ -6,49 +6,58 @@ import re
 import requests
 import sys
 
+from base import BaseClass, API, CUBES_API
+from cache import get_hash_id, InternalCache, RedisCache
 from complexity.complexity import complexity
 from complexity.opportunity_gain import opportunity_gain
 from complexity.proximity import proximity
 from complexity.rca import rca
 from complexity.relatedness import relatedness
-from base import BaseClass
-from cache import get_hash_id, InternalCache, RedisCache
-
-
-API = str(sys.argv[2]) + "/data"
-CUBES_API = str(sys.argv[2]) + "/cubes"
-auth_level = int(sys.argv[5]) or 0 # Auth level
-headers = json.loads(sys.argv[4]) # Headers
-params = json.loads(sys.argv[1]) # Query params
-# server_headers = sys.argv[6]
-
-cubes_cache = InternalCache(CUBES_API, headers).cubes
 
 def yn(x):
-    return x and x in ["true", "1", True]
+    value = x and x in ["true", "1", True]
+    return value or False
+
+auth_level = int(sys.argv[4]) or 0 # Auth level
+headers = json.loads(sys.argv[3]) # Headers
+params = json.loads(sys.argv[1]) # Query params
+cubes_cache = InternalCache(CUBES_API, headers).cubes
 
 is_cache = yn(os.environ["CANON_STATS_CACHE"])
+
+
+def convert_dict(params):
+    return dict([item.split(":") for item in params.split(",")]) if params else {}
+
 
 def filtered_params(params):
     return {k:params[k] for k in params if re.match("(?!.*(debug|filter_|options|ranking)).*$", k)}
 
-def filter_threshold(x, right=False):
-    if "Right" in x[0]:
-        return right
-    else:
-        return not right
 
-def pivot_data(df, index, columns, values):
-    return pd.pivot_table(df, index=[index], columns=[columns], values=values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
+def filter_threshold(x, right=False):
+    return right if "Right" in x[0] else not right
+
 
 def get_dd_id(dd):
-    return "{} ID".format(dd)
+    """
+    Includes ID in a drilldown name.
+    """
+    return f"{dd} ID"
+
+
+def pivot_data(df, index, columns, values):
+    """
+    Pivots dataframe based on drilldowns.
+    """
+    return pd.pivot_table(df, index=[index], columns=[columns], values=values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
+
 
 def _load_params():
     """
-    Returns params for using
+    Split rca param into drilldowns and measure, and associates each drilldown with its ID.
+    @returns: drilldown names (dd1, dd2), drilldown ids (dd1_id, dd2_id), and measure.
     """
-    dd1, dd2, measure = params["rca"].split(",")
+    dd1, dd2, measure = params.get("rca").split(",")
 
     dd1_id = get_dd_id(dd1)
     dd2_id = get_dd_id(dd2)
@@ -57,74 +66,117 @@ def _load_params():
 
 
 def _load_alias_params():
+    """
+    Updates drilldown names and ids, using alias param.
+    @returns: drilldown names (dd1, dd2), drilldown ids (dd1_id, dd2_id), and measure.
+    """
     dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     if "alias" in params:
-        dd1, dd2 = params["alias"].split(",")
+        dd1, dd2 = params.get("alias").split(",")
         dd1_id = get_dd_id(dd1)
         dd2_id = get_dd_id(dd2)
 
     return dd1, dd2, dd1_id, dd2_id
 
 
+def _update_params(dd1, dd2, key="alias"):
+    if params.get(key):
+        dd1, dd2 = params.get(key).split(",")
+
+    dd1_id = get_dd_id(dd1)
+    dd2_id = get_dd_id(dd2)
+
+    return dd1, dd2, dd1_id, dd2_id
+
+
 class Complexity:
+    """
+    This module allows to calculate Economic Complexity measures.
+    """
     def __init__(self, name):
+        """
+        Custom query parameters own of canon-stats includes @param.
+        Custom measures names used on the Class includes @measure.
+        """
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
-        ddi1_unique = dd1
-        ddi2_unique = dd2
+        dd1_unique = dd1
+        dd2_unique = dd2
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
 
-        # Keeps drilldowns used in cubes using method="subnational|relatedness"
+        # Defines default values for secondary drilldowns
+        dd1_right = dd1
+        dd1_right_id = dd1_id
+        dd2_right = dd2
+        dd2_right_id = dd2_id
+
+        # If "rcaRight" param is defined, updates secondary drilldown values.
         if params.get("rcaRight"):
             dd1_right, dd2_right, measure = params.get("rcaRight").split(",")
-            if params.get("aliasRight"):
-                dd1_right, dd2_right = params.get("aliasRight").split(",")
-            dd1_right_id = get_dd_id(dd1_right)
-            dd2_right_id = get_dd_id(dd2_right)
-        else:
-            dd1_right = dd1
-            dd1_right_id = dd1_id
-            dd2_right = dd2
-            dd2_right_id = dd2_id
+            dd1_right, dd2_right, dd1_right_id, dd2_right_id = _update_params(dd1_right, dd2_right, "aliasRight")
 
+        # Gets custom params.
+        cube_name = params.get("cube")
+        eci_threshold = params.get("eciThreshold")
+        iterations = params.get("iterations")
+        method = params.get("method")
         options = params.get("options")
         threshold = params.get("threshold")
-        eciThreshold = params.get("eciThreshold")
+
+        # Generates an empty dataframe used as default value.
+        empty_df = pd.DataFrame([])
 
         self.base = BaseClass(API, headers, auth_level, cubes_cache)
         self.cache = RedisCache()
-        self.cube_name = params.get("cube")
+        self.cube_name = cube_name
         self.cubes_cache = cubes_cache
         self.dd1 = dd1
-        self.dd1_unique = ddi1_unique
-        self.dd2_unique = ddi2_unique
-        self.dd1_right = dd1_right
-        self.dd2_right = dd2_right
-        self.dd1_right_id = dd1_right_id
-        self.dd2_right_id = dd2_right_id
         self.dd1_id = dd1_id
+        self.dd1_right = dd1_right
+        self.dd1_right_id = dd1_right_id
+        self.dd1_unique = dd1_unique
         self.dd2 = dd2
         self.dd2_id = dd2_id
-        self.df_cube_right = pd.DataFrame([])
-        self.eciThreshold = dict([item.split(":") for item in eciThreshold.split(",")]) if eciThreshold else {}
-        self.eci_measure = "{} ECI".format(measure)
-        self.endpoint = str(sys.argv[3])
-        self.iterations = int(params.get("iterations")) if "iterations" in params else 20
-        self.labels = pd.DataFrame([])
+        self.dd2_right = dd2_right
+        self.dd2_right_id = dd2_right_id
+        self.dd2_unique = dd2_unique
+        self.df_cube_right = empty_df.copy()
+        self.eci_threshold = convert_dict(eci_threshold) # @param
+        self.eci_measure = f"{measure} ECI" # @measure
+        self.endpoint = str(sys.argv[2])
+        self.iterations = int(iterations) if iterations else 20 # @param
+        self.labels = empty_df.copy()
         self.measure = measure
-        self.method = params.get("method")
+        self.method = method # @param
         self.name = name
-        self.opp_gain_measure = "{} Opportunity Gain".format(measure)
-        self.options = dict([item.split(":") for item in options.split(",")]) if options else {}
-        self.parents = True if params.get("parents") and params.get("parents") == "true" else False
-        self.pci_measure = "{} PCI".format(measure)
-        self.proximity_measure = "{} Proximity".format(measure)
-        self.ranking = True if params.get("ranking") and params.get("ranking") == "true" else False
-        self.rca_measure = "{} RCA".format(measure)
-        self.relatedness_measure = "{} Relatedness".format(measure)
-        self.threshold = dict([item.split(":") for item in threshold.split(",")]) if threshold else {}
+        self.opp_gain_measure = f"{measure} Opportunity Gain" # @measure
+        self.options = convert_dict(options) # @param
+        self.parents = yn(params.get("parents"))
+        self.pci_measure = f"{measure} PCI" # @measure
+        self.proximity_measure = f"{measure} Proximity" # @measure
+        self.ranking = yn(params.get("ranking")) # @param
+        self.rca_measure = f"{measure} RCA" # @measure
+        self.relatedness_measure = f"{measure} Relatedness" # @measure
+        self.threshold = convert_dict(threshold) # @param
+
+
+    def call(self):
+        """
+        Dynamically, call each endpoint of complexity.
+        Internally, each function that is related to an endpoint must to start with "_".
+        @returns: Complexity's function is invoked.
+        """
+        def func_not_found():
+            print(f"No Function {self.name} Found!")
+        func_name = f"_{self.name}"
+        func = getattr(self, func_name, func_not_found) 
+        func()
 
 
     def threshold_step(self, df, threshold = {}):
+        """
+        Generates cuts on data before to do calculations
+        @returns: DataFrame filtered by thresholds defined.
+        """
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         df_copy = df.copy()
         threshold_items = threshold or self.threshold
@@ -209,22 +261,20 @@ class Complexity:
 
     def load_step(self):
         """
-        Requests data from tesseract endpoint, and calculates RCA index
+        Requests data from tesseract endpoint, and calculates RCA index.
+        @returns: RCA matrix.
         """
         # Creates a dict with params
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
         drilldowns = f"{dd1},{dd2}"
-        _params = params.copy()
+        _params = {k:params[k] for k in params if re.match("(?!.*(debug|filter_|options|ranking|rca|threshold)).*$", k)}
         _params["drilldowns"] = drilldowns
         _params["measures"] = measure
 
-        # Removes rca as param
-        _params.pop("rca", None)
-
-        # Calculates RCA matrix for subnational cubes
+        # Calculates RCA matrix for local units (subnational).
         # We compare the share of an activity in a local unit (e.g. region, province) with the share of that activity in the world. 
         # For further references: https://oec.world/en/resources/methods#uses
-        # Methods accepted are "subnational" and "relatedness"
+        # Methods accepted are "subnational" and "relatedness".
         if self.method in ["subnational", "relatedness"]:
             # Gets params related with "subnational" cube
             params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
@@ -259,11 +309,7 @@ class Complexity:
                 df_right = self.cache.get(f"subnational_{params_right_id}")
                 self.labels = self.cache.get(f"labels_{params_id}")
 
-                if params.get("aliasRight"):
-                    dd1_right, dd2_right = params.get("aliasRight").split(",")
-
-                dd1_right_id = get_dd_id(dd1_right)
-                dd2_right_id = get_dd_id(dd2_right)
+                dd1_right, dd2_right, dd1_right_id, dd2_right_id = _update_params(dd1_right, dd2_right, "aliasRight")
 
             else:
                 # Calculates numerator of the subnational RCA
@@ -288,10 +334,7 @@ class Complexity:
                     df_right = self.threshold_step(df_right, threshold_items)
 
                     # Updates drilldowns ids, in case to define aliasRight on URL
-                    if params.get("aliasRight"):
-                        dd1_right, dd2_right = params.get("aliasRight").split(",")
-                    dd1_right_id = get_dd_id(dd1_right)
-                    dd2_right_id = get_dd_id(dd2_right)
+                    dd1_right, dd2_right, dd1_right_id, dd2_right_id = _update_params(dd1_right, dd2_right, "aliasRight")
 
                     # Pivots data related with cube right, and stores on df_cube_right
                     q = pivot_data(df_right, dd1_right_id, dd2_right_id, measure_right)
@@ -335,12 +378,13 @@ class Complexity:
         else:
             # Generates an unique ID for the query
             params_id = get_hash_id(filtered_params(_params))
+            labels_cache_id = f"labels_{params_id}"
             data = self.cache.get(params_id) if is_cache else None
 
             # Checks if you are using cache
             if is_cache and isinstance(data, pd.DataFrame):
                 output = data
-                self.labels = self.cache.get(f"labels_{params_id}")
+                self.labels = self.cache.get(labels_cache_id)
 
             # Calcules for the first time the RCA matrix
             else:
@@ -360,41 +404,43 @@ class Complexity:
                 output = output.reset_index().melt(id_vars=dd1_id, value_name=self.rca_measure)
                 # Stores the dataframe using Redis
                 if is_cache:
-                    self.cache.set(f"labels_{params_id}", df_copy)
+                    self.cache.set(labels_cache_id, df_copy)
                     self.cache.set(params_id, output)
 
             return output
 
 
-    def get(self):
-        def func_not_found():
-            print(f"No Function {self.name} Found!")
-        func_name = f"_{self.name}"
-        func = getattr(self, func_name, func_not_found) 
-        func()
-
-
     def transform_step(self, df, dds, measure):
+        """
+        Transforms the dataframe after doing complexity calculations.
+        @returns: DataFrame transformed.
+        """
+        # Includes Ranking.
         if self.ranking:
             df = df.sort_values(measure, ascending=False)
             df[f"{measure} Ranking"] = range(1, df.shape[0] + 1)
 
+        # Filters dataframe by each drilldowns.
         for dd in dds:
             filter_var = f"filter_{dd}"
             filter_id = get_dd_id(dd)
             if filter_var in params and filter_id in list(df):
                 column = df[filter_id].astype(str)
-                param = str(params[filter_var])
+                param = params[filter_var].split(",")
                 df = df.loc[np.in1d(column, param)]
 
-        limit = self.options.get("limit")
+        # Sorts dataframe. Options are "asc", "ascending", "descending", and "desc".
         sort = self.options.get("sort")
-        if sort and sort in ["asc", "desc"]:
-            ascending = sort == "asc"
+        if sort and sort in ["asc", "ascending", "desc", "descending"]:
+            ascending = sort == "asc" or sort == "ascending"
             df = df.sort_values(by=measure, ascending=ascending)
+
+        # Limits the maximum number of results to return.
+        limit = self.options.get("limit")
         if limit and limit.isdigit():
             df = df.head(int(limit))
 
+        # Assign labels for each ID on dataframe.
         dd1_id = self.dd1_id
         dd2_id = self.dd2_id
 
@@ -417,11 +463,12 @@ class Complexity:
             df = df.merge(a, on=[dd1_id])
             df = df.merge(b, on=[dd2_id])
         else:
-            dd = self.dd1 if self.endpoint == "eci" else self.dd2
-            dd_id = dd1_id if self.endpoint == "eci" else dd2_id
+            is_eci = self.endpoint == "eci"
+            dd = self.dd1 if is_eci else self.dd2
+            dd_id = dd1_id if is_eci else dd2_id
             if self.parents:
                 parents = self.cubes_cache[self.cube_name]["parents"]
-                dd_unique = self.dd1_unique if self.endpoint == "eci" else self.dd2_unique
+                dd_unique = self.dd1_unique if is_eci else self.dd2_unique
                 dd_parents = parents[dd_unique]
                 dd_parents += [get_dd_id(i) for i in dd_parents.copy()]
                 a = self.labels[dd_parents].drop_duplicates()
@@ -434,15 +481,20 @@ class Complexity:
 
 
     def _complexity(self):
+        """
+        Calculates ECI / PCI
+        """
         df = self.load_step()
         dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
         dd2_id = self.dd2_id
 
-        rca_measure = self.rca_measure
+        # Get variables from Class
         eci_measure = self.eci_measure
+        iterations = self.iterations
         pci_measure = self.pci_measure
+        rca_measure = self.rca_measure
 
         complexity_measure = eci_measure if self.endpoint == "eci" else pci_measure
         complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
@@ -451,27 +503,25 @@ class Complexity:
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 
         # Filters by ECI threshold
-        if self.eciThreshold:
+        if self.eci_threshold:
             rcas = df.copy()
             rcas[rcas >= 1] = 1
             rcas[rcas < 1] = 0
             # Removes small data related with drilldown1
-            if dd1 in self.eciThreshold:
-                value = int(self.eciThreshold[dd1])
+            if dd1 in self.eci_threshold:
+                value = int(self.eci_threshold[dd1])
                 cols = np.sum(rcas, axis=1)
                 cols = list(cols[cols > value].index)
                 df = df[df.index.isin(cols)]
                 df_copy = df_copy[df_copy[dd1_id].isin(cols)]
 
             # Removes small data related with drilldown2
-            if dd2 in self.eciThreshold:
-                value = int(self.eciThreshold[dd2])
+            if dd2 in self.eci_threshold:
+                value = int(self.eci_threshold[dd2])
                 rows = np.sum(rcas, axis=0)
                 rows = list(rows[rows > value].index)
                 df = df[rows]
                 df_copy = df_copy[df_copy[dd2_id].isin(cols)]
-
-        iterations = self.iterations
 
         # Calculates ECI / PCI for subnational territories
         if self.method == "subnational":
@@ -505,7 +555,7 @@ class Complexity:
         df_copy = df.copy()
         df_copy = pivot_data(df_copy, dd1_id, dd2_id, rca_measure)
 
-        iterations = int(params["iterations"]) if "iterations" in params else 21
+        iterations = self.iterations
         eci, pci = complexity(df_copy, iterations)
 
         output = opportunity_gain(df_copy, proximity(df_copy), pci)
@@ -551,6 +601,9 @@ class Complexity:
 
 
     def _rca(self):
+        """
+        Calculates RCA
+        """
         df = self.load_step()
         df = self.transform_step(df, [self.dd1, self.dd2], self.rca_measure)
         self.base.to_output(df)
@@ -587,6 +640,8 @@ class Complexity:
 
 
 if __name__ == "__main__":
-    name = str(sys.argv[3])
+    # Based on API used, generates the internal function's name.
+    name = str(sys.argv[2])
     full_name = "complexity" if name in ["eci", "pci"] else name
-    Complexity(full_name).get()
+    # Executes the function according to its name.
+    Complexity(full_name).call()

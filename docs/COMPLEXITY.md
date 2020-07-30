@@ -69,6 +69,10 @@ Filter results on a drilldown. This property requires the same name used on `rca
 Allows to calculate Economic Complexity measures, comparing the share of an activity in a local unit (e.g. region, province) with the share of that activity in the world. 
 This is based on the methodology proposed on [oec.world](https://oec.world/en/resources/methods#uses). Values accepted are `subnational` and `relatedness`.
 
+
+### iterations
+Updates the number of iterations used for ECI / PCI calculations. Default value is `20`.
+
 ### options
 
 Customize the output options of each endpoint. Currently, options are `limit` and `sort`.
