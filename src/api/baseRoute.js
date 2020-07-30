@@ -8,6 +8,7 @@ const {
   CANON_PORT,
   CANON_STATS_API,
   CANON_STATS_BASE_URL,
+  CANON_STATS_LOGGING,
   CANON_STATS_PYTHON_ENGINE,
   CANON_STATS_TIMEOUT,
   OLAP_PROXY_SECRET
@@ -20,6 +21,7 @@ const timeout = CANON_STATS_TIMEOUT * 1;
 
 const BASE_URL = CANON_STATS_BASE_URL || "/api/stats";
 const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
+const LOGGING = CANON_STATS_LOGGING || false;
 
 const options = {
   "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
@@ -94,7 +96,7 @@ module.exports = function (app) {
             const output = {
               error: error.toString()
             };
-            if (yn(debug)) output.traceback = traceback.split("\r\n");
+            if (yn(debug) && yn(LOGGING)) output.traceback = traceback.split("\r\n");
             const errorCode = traceback.includes("This cube is not public") ? 401 : 404;
             return res.status(errorCode).json(output);
           }
@@ -110,32 +112,38 @@ module.exports = function (app) {
             clearTimeout(timeoutId);
           }
           // Log when process closes
-          if (yn(debug)) console.log("process closed");
+          if (yn(debug) && yn(LOGGING)) console.log("process closed");
         });
 
         // ensure timeout is set and is an actual number
         if (!isNaN(timeout)) {
           timeoutId = setTimeout(() => {
-            console.log("---canon-stats timeout---");
-            console.log(`endpoint: ${endpoint}`);
-            console.log(`apiQuery: ${apiQuery}`);
+            if (yn(LOGGING)) {
+              console.log("---canon-stats timeout---");
+              console.log(`endpoint: ${endpoint}`);
+              console.log(`apiQuery: ${apiQuery}`);
+            }
             try {
               process.kill(-py.pid, "SIGKILL");
             } catch (e) {
               py.kill();
-              console.log("Cannot kill canon-stats process!");
-              console.log(e);
+              if (yn(LOGGING)) {
+                console.log("Cannot kill canon-stats process!");
+                console.log(e);
+              }
             }
           }, timeout);
         }
 
         // log the error
         py.on("error", err => {
-          console.log("---canon-stats error---");
-          console.log(`endpoint: ${endpoint}`);
-          console.log(`apiQuery: ${apiQuery}`);
-          console.log(err);
-          console.log("---END canon-stats error---");
+          if (yn(LOGGING)) {
+            console.log("---canon-stats error---");
+            console.log(`endpoint: ${endpoint}`);
+            console.log(`apiQuery: ${apiQuery}`);
+            console.log(err);
+            console.log("---END canon-stats error---");
+          }
         });
 
         // make sure to clear the timeout on process exit

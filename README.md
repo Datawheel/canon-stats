@@ -75,6 +75,7 @@ Optional env vars for the library are defined on the table.
 | env var | description | default  |
 |---|---|---|
 | `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` |
+| `CANON_STATS_LOGGING` | Enable verbose logging in console | `false` |
 | `CANON_STATS_PYTHON_ENGINE` | Sets the python's engine used for running the library. | `python3` |
 | `CANON_STATS_TIMEOUT` | Sets an API request timeout. | `undefined` |
 | `OLAP_PROXY_SECRET` | Gets data from private cubes defined on tesseract. | `undefined` |
