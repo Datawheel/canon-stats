@@ -1,2 +1,4 @@
+source .env
 npm run build
-npm publish --access restricted
+cd scripts
+node release.js
