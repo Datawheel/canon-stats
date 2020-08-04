@@ -1,6 +1,6 @@
 {
   "name": "@datawheel/canon-stats",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Reusable statistical and complexity calculations using NodeJS and Express",
   "main": "src/index.js",
   "scripts": {
@@ -23,7 +23,9 @@
     "yn": "^4.0.0"
   },
   "devDependencies": {
+    "@octokit/rest": "^18.0.3",
     "babel-cli": "^6.26.0",
-    "nodemon": "^1.19.4"
+    "nodemon": "^1.19.4",
+    "shelljs": "^0.8.4"
   }
 }

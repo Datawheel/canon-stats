@@ -72,10 +72,12 @@ For example, the env var used on DataMEXICO is:
 export CANON_STATS_API=https://api.datamexico.org/tesseract
 ```
 Optional env vars for the library are defined on the table.
-| env var | description | default  |
+| variable | description | default  |
 |---|---|---|
-| `CANON_STATS_BASE_URL` | Customize the endpoint's URL | `/api/stats` |
-| `CANON_STATS_LOGGING` | Enable verbose logging in console | `false` |
+| `CANON_STATS_BASE_URL` | Customize the endpoint's URL. | `/api/stats` |
+| `CANON_STATS_CACHE` | Enables Redis cache on the server. | `false` |
+| `CANON_STATS_CACHE_URL` | Creates a connection with the Redis server using a URL. | `undefined` |
+| `CANON_STATS_LOGGING` | Enables verbose logging in console. | `false` |
 | `CANON_STATS_PYTHON_ENGINE` | Sets the python's engine used for running the library. | `python3` |
 | `CANON_STATS_TIMEOUT` | Sets an API request timeout. | `undefined` |
 | `OLAP_PROXY_SECRET` | Gets data from private cubes defined on tesseract. | `undefined` |
