@@ -55,7 +55,7 @@ def get_str(x):
 
 class RedisCache:
     def __init__(self):
-        REDIS_URL = os.environ["CANON_STATS_CACHE_URL"]
+        REDIS_URL = os.environ.get("CANON_STATS_CACHE_URL")
         self.context = pa.default_serialization_context()
         self.r = redis.from_url(REDIS_URL)
 

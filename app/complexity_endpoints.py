@@ -23,7 +23,7 @@ headers = json.loads(sys.argv[3]) # Headers
 params = json.loads(sys.argv[1]) # Query params
 cubes_cache = InternalCache(CUBES_API, headers).cubes
 
-is_cache = yn(os.environ["CANON_STATS_CACHE"])
+is_cache = yn(os.environ.get("CANON_STATS_CACHE"))
 
 
 def convert_dict(params):
