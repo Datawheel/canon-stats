@@ -1,13 +1,13 @@
 import os
 import pandas as pd
 import requests
-# import requests_cache
 import simplejson as json
 
-# expire_after_env_var = "CANON_STATS_CACHE_EXPIRE_AFTER" in os.environ
-# expire_after = int(os.environ["CANON_STATS_CACHE_EXPIRE_AFTER"]) if expire_after_env_var else 60*60*24
-# requests_cache.install_cache("canon_stats_cache", expire_after=expire_after, allowable_codes=(200, ))
-# requests_cache.remove_expired_responses()
+BASE_URL = str(os.environ["CANON_STATS_API"]).strip("/")
+
+API = f"{BASE_URL}/data.jsonrecords"
+CUBES_API = f"{BASE_URL}/cubes"
+
 
 class BaseClass:
     def __init__(self, API, headers={}, auth_level=0, cubes_cache={}):
@@ -30,6 +30,11 @@ class BaseClass:
         return df
 
     def to_output(self, df):
-        print(json.dumps({
+        """
+        Convert a DataFrame to a JSON file, that can be used as response by an API.
+        @returns: JSON formatted string.
+        """
+        output = {
             "data": json.loads(df.to_json(orient="records"))
-        }))
+        }
+        print(json.dumps(output))

@@ -1,5 +1,6 @@
 import simplejson as json
 import sys
+import os
 
 from regressions.ols import ols
 from regressions.logit import logit
@@ -7,15 +8,13 @@ from regressions.arima import arima
 from regressions.probit import probit
 from regressions.prophet import prophet
 
-from base import BaseClass
+from base import BaseClass, API, CUBES_API
 from cache import InternalCache
 
-API = str(sys.argv[2]) + "/data"
 params = json.loads(sys.argv[1])
-headers = sys.argv[4]
-auth_level = int(sys.argv[5]) or 0
-server_headers = sys.argv[6]
-CUBES_API = str(sys.argv[2]) + "/cubes"
+headers = sys.argv[2]
+auth_level = int(sys.argv[4]) or 0
+server_headers = sys.argv[5]
 cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
 
 

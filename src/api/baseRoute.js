@@ -77,7 +77,7 @@ module.exports = function (app) {
         //  allows killing of all of child's descendants.
         //  refs: http://azimi.me/2014/12/31/kill-child_process-node-js.html
         //        https://github.com/nodejs/node-v0.x-archive/issues/1811
-        const py = spawn(ENGINE, ["-W", "ignore", pyPath, apiQuery, api, endpoint, apiHeaders, authLevel, apiServerHeaders], { detached: true });
+        const py = spawn(ENGINE, ["-W", "ignore", pyPath, apiQuery, endpoint, apiHeaders, authLevel, apiServerHeaders], { detached: true });
         let respString = "";
         let traceback = "";
 

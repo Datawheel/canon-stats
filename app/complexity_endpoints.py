@@ -278,9 +278,8 @@ class Complexity:
         if self.method in ["subnational", "relatedness"]:
             # Gets params related with "subnational" cube
             params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
-
             # Gets params related with "world" cube
-            dd1_right, dd2_right, measure_right =  _params.get("rcaRight").split(",")
+            dd1_right, dd2_right, measure_right =  params.get("rcaRight").split(",")
             params_right = {k.replace("Right", ""):_params[k] for k in _params if re.match("\w+Right", k) and re.match("(?!.*(alias|rca)).*$", k)}
             params_right["drilldowns"] = f"{dd1_right},{dd2_right}"
             params_right["measures"] = measure_right
@@ -353,6 +352,8 @@ class Complexity:
                 # Melts dataframe
                 df_rca_subnat = rca_subnat.reset_index().set_index(dd1_id).dropna(axis=1, how="all").fillna(0)
                 df_rca_subnat = pd.melt(df_rca_subnat.reset_index(), id_vars=[dd1_id], value_name=self.rca_measure)
+                if "variable" in list(df_rca_subnat):
+                    df_rca_subnat = df_rca_subnat.rename(columns={"variable": dd2_id})
 
                 # If cache is activated, stores RCA subnational matrix, labels, cube right used
                 if is_cache:
@@ -529,7 +530,7 @@ class Complexity:
             # Calculates ECI / PCI for comparison cube
             eci, pci = complexity(rca(df_right), iterations)
             df_pci = pd.DataFrame(pci).rename(columns={0: complexity_measure}).reset_index()
-            df_pci = df_pci.merge(df_copy, on=dd2_id)
+            df_pci = df_pci.merge(df_copy, left_on=self.dd2_right_id, right_on=dd2_id)
             dds = [complexity_dd_id]
             results = df_pci[df_pci[rca_measure] >= 1].groupby(dds).mean().reset_index()
             results = results[dds + [complexity_measure]]
