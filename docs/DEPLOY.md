@@ -2,6 +2,7 @@
 Last updated: 2020-08-04.
 
 ## Release a new version
+Canon-stats has automated releasing a new version of the library. You just need to update on [package.json](../package.json) the version number, and run in your terminal `publish.sh`.
 
 ### 1) Update package.json's version
 ```
@@ -15,14 +16,6 @@ Last updated: 2020-08-04.
 
 In the terminal, run:
 ```
-npm run build
+. publish.sh
 ```
 This command will build a new version.
-
-### 3) Release on GitHub
-
-NOTE: _version_ is the number of version used on [package.json](../package.json).
-* Go to [https://github.com/Datawheel/canon-stats/releases/new](https://github.com/Datawheel/canon-stats/releases/new)
-* **Tag version**: _version_
-* **Release title**: @datawheel/canon-stats@_version_
-* Click on **"Publish release"**.
