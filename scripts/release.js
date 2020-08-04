@@ -8,9 +8,8 @@ const {Octokit} = require("@octokit/rest");
 const shell = require("shelljs");
 const execAsync = require("./execAsync");
 
-const {GITHUB_TOKEN} = process.env;
+const {GITHUB_TOKEN: token} = process.env;
 
-const target = process.argv[2];
 module.exports = cliRelease();
 
 /**
@@ -30,9 +29,6 @@ async function cliRelease() {
     const stdout = await execAsync("git log -- `git describe --tags --abbrev=0`...HEAD");
     const body = stdout.length ? stdout : `${name}@${version}`;
 
-    // await execAsync("npm publish --access public ./");
-    // shell.echo("published to npm");
-
     await execAsync("git add --all");
     await execAsync(`git commit -m \"compiles ${name}@${version}\"`);
     shell.echo("git commit");
@@ -44,7 +40,7 @@ async function cliRelease() {
     shell.echo("git push");
 
     const octokit = new Octokit({
-      auth: `token ${token}`
+      auth: token
     });
 
     await octokit.repos.createRelease({
