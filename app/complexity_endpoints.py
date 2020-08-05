@@ -482,8 +482,6 @@ class Complexity:
 
 
     def transform_proximity_step(self, df):
-        dd1 = self.dd2
-        dd1_id = self.dd1_id
         dd2 = self.dd2
         dd2_id = self.dd2_id
         proximity_measure = self.proximity_measure
