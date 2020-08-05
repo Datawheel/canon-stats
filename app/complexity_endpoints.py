@@ -481,6 +481,49 @@ class Complexity:
         return df
 
 
+    def transform_proximity_step(self, df):
+        dd1 = self.dd2
+        dd1_id = self.dd1_id
+        dd2 = self.dd2
+        dd2_id = self.dd2_id
+        proximity_measure = self.proximity_measure
+
+        filter_var = f"filter_{dd2}"
+
+        if filter_var in params and f"{dd2} ID Source" in list(df):
+            df = df.loc[np.in1d(df[f"{dd2} ID Source"].astype(str), [str(params[filter_var])])]
+
+        filter_val = "proximity_min"
+
+        if filter_val in params:
+            df = df[df[proximity_measure] >= float(params[filter_val])]
+
+        if self.parents:
+            parents = self.cubes_cache[self.cube_name]["parents"]
+            dd2_parents = parents[self.dd2_unique]
+            dd2_parents += [get_dd_id(i) for i in dd2_parents.copy()]
+
+            temp = self.labels[dd2_parents].copy().drop_duplicates().dropna()
+            a = temp.copy().rename(columns={dd2_id: f"{dd2_id} Source"})
+            b = temp.copy().rename(columns={dd2_id: f"{dd2_id} Target"})
+
+            source_columns = {parent: f"{parent} Source" for parent in dd2_parents}
+            target_columns = {parent: f"{parent} Target" for parent in dd2_parents}
+                                       
+            df = df.merge(a, on=[f"{dd2_id} Source"], how="left").fillna(0).rename(columns=source_columns)
+            df = df.merge(b, on=[f"{dd2_id} Target"], how="left").fillna(0).rename(columns=target_columns)
+
+        else:
+            temp = self.labels[[self.dd2, dd2_id]].copy().drop_duplicates().dropna()
+            a = temp.copy().rename(columns={dd2_id: f"{dd2_id} Source"})
+            b = temp.copy().rename(columns={dd2_id: f"{dd2_id} Target"})
+
+            df = df.merge(a, on=[f"{dd2_id} Source"], how="left").fillna(0).rename(columns={dd2: f"{dd2} Source"})
+            df = df.merge(b, on=[f"{dd2_id} Target"], how="left").fillna(0).rename(columns={dd2: f"{dd2} Target"})
+
+        return df
+
+
     def _complexity(self):
         """
         Calculates ECI / PCI
@@ -573,32 +616,40 @@ class Complexity:
 
     def _proximity(self):
         df = self.load_step()
+        dd1 = self.dd1
         dd1_id = self.dd1_id
         dd2 = self.dd2
         dd2_id = self.dd2_id
         rca_measure = self.rca_measure
 
-        df_labels = df[[dd2, dd2_id]].drop_duplicates()
-        
+        if f"filter_{dd1}" in params:
+            temp = df.loc[np.in1d(df[dd1_id].astype(str), [str(params[f"filter_{dd1}"])])].copy()
+
+        df_labels = df[[dd2_id]].drop_duplicates()
+
         rcas = pivot_data(df, dd1_id, dd2_id, rca_measure)
+
         df = proximity(rcas)
 
         df = df.reset_index()
-        df = df.rename(columns={dd2_id: "{} Target".format(dd2_id)})
-        df = pd.melt(df, id_vars="{} Target".format(dd2_id), value_name=self.proximity_measure)
-        df = df.rename(columns={dd2_id: "{} Source".format(dd2_id)})
-        df = df[df["{} Source".format(dd2_id)] != df["{} Target".format(dd2_id)]]
+        df = df.rename(columns={dd2_id: f"{dd2_id} Target"})
+        df = pd.melt(df, id_vars=f"{dd2_id} Target", value_name=self.proximity_measure)
+        df = df.rename(columns={dd2_id: f"{dd2_id} Source"}).copy()
+        
+        if f"filter_{dd1}" not in params:
+            df = df[df[f"{dd2_id} Source"] != df[f"{dd2_id} Target"]]
 
         for item in ["Source", "Target"]:
-            df = df.merge(df_labels, left_on="{} {}".format(dd2_id, item), right_on=dd2_id)
-            df = df.rename(columns={dd2: "{} {}".format(dd2, item)})
+            df = df.merge(df_labels, left_on=f"{dd2_id} {item}", right_on=dd2_id)
+            df = df.rename(columns={dd2: f"{dd2} {item}"})
             df = df.drop(columns=[dd2_id])
 
-        filter_var = "filter_{}".format(dd2)
-        if filter_var in params and "{} ID Source".format(dd2) in list(df):
-            df = df[df["{} ID Source".format(dd2)].astype(str) == str(params[filter_var])]
+        output = self.transform_proximity_step(df)
 
-        self.base.to_output(df)
+        if f"filter_{dd1}" in params:
+            output = output.merge(temp, left_on=f"{dd2_id} Target", right_on=dd2_id)
+
+        self.base.to_output(output)
 
 
     def _rca(self):
