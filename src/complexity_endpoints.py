@@ -188,10 +188,10 @@ class Complexity:
                 value = float(item[1])
 
                 dd_id = get_dd_id(key)
-                if key == "Population" and os.environ["CANON_STATS_POPULATION_BASE"]: 
+                if key == "Population" and os.environ.get("CANON_STATS_POPULATION_BASE"):
                     # Get params for population api
-                    POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
-                    env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+                    POP_API = os.environ.get("CANON_STATS_POPULATION_BASE")
+                    env_params = os.environ.get("CANON_STATS_POPULATION_PARAMS")
 
                     # Creates params dictionary
                     pop_params = {}
@@ -225,8 +225,8 @@ class Complexity:
         else:
             if "threshold_Population" in params:
                 # Get params for population api
-                POP_API = os.environ["CANON_STATS_POPULATION_BASE"]
-                env_params = os.environ["CANON_STATS_POPULATION_PARAMS"]
+                POP_API = os.environ.get("CANON_STATS_POPULATION_BASE")
+                env_params = os.environ.get("CANON_STATS_POPULATION_PARAMS")
 
                 # Creates params dictionary
                 pop_params = {}
