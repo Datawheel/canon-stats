@@ -26,8 +26,8 @@ cubes_cache = InternalCache(CUBES_API, headers).cubes
 is_cache = yn(os.environ.get("CANON_STATS_CACHE"))
 
 
-def convert_dict(params):
-    return dict([item.split(":") for item in params.split(",")]) if params else {}
+def convert_dict(params, s=","):
+    return dict([item.split(":") for item in params.split(s)]) if params else {}
 
 
 def filtered_params(params):
@@ -41,13 +41,25 @@ def filter_threshold(x, right=False):
 def get_dd_id(dd):
     """
     Includes ID in a drilldown name.
+
+    Returns:
+        (string) Drilldown ID.
     """
     return f"{dd} ID"
 
 
 def pivot_data(df, index, columns, values):
     """
-    Pivots dataframe based on drilldowns.
+    Pivots DataFrame based on drilldowns.
+
+    Parameters:
+        df (DataFrame): DataFrame.
+        index (string): dd1.
+        columns (string): dd2.
+        values (string): Measure.
+
+    Returns:
+        A pivoted DataFrame.
     """
     return pd.pivot_table(df, index=[index], columns=[columns], values=values).reset_index().set_index(index).dropna(axis=1, how="all").fillna(0).astype(float)
 
@@ -55,7 +67,12 @@ def pivot_data(df, index, columns, values):
 def _load_params():
     """
     Split rca param into drilldowns and measure, and associates each drilldown with its ID.
-    @returns: drilldown names (dd1, dd2), drilldown ids (dd1_id, dd2_id), and measure.
+    Returns:
+        dd1 (string): Drilldown1 name
+        dd2 (string): Drilldown2 name
+        dd1_id (string): Drilldown1 ID
+        dd2_id (string): Drilldown2 ID
+        measure (string): Measure name
     """
     dd1, dd2, measure = params.get("rca").split(",")
 
@@ -68,7 +85,11 @@ def _load_params():
 def _load_alias_params():
     """
     Updates drilldown names and ids, using alias param.
-    @returns: drilldown names (dd1, dd2), drilldown ids (dd1_id, dd2_id), and measure.
+    Returns:
+        dd1 (string): Drilldown1 name
+        dd2 (string): Drilldown2 name
+        dd1_id (string): Drilldown1 ID
+        dd2_id (string): Drilldown2 ID
     """
     dd1, dd2, dd1_id, dd2_id, measure = _load_params()
     if "alias" in params:
@@ -97,6 +118,9 @@ class Complexity:
         """
         Custom query parameters own of canon-stats includes @param.
         Custom measures names used on the Class includes @measure.
+
+        Parameters:
+            name (string): Complexity calculation.
         """
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
         dd1_unique = dd1
@@ -163,7 +187,8 @@ class Complexity:
         """
         Dynamically, call each endpoint of complexity.
         Internally, each function that is related to an endpoint must to start with "_".
-        @returns: Complexity's function is invoked.
+        Returns: 
+            Complexity's function is invoked.
         """
         def func_not_found():
             print(f"No Function {self.name} Found!")
@@ -175,7 +200,8 @@ class Complexity:
     def threshold_step(self, df, threshold = {}):
         """
         Generates cuts on data before to do calculations
-        @returns: DataFrame filtered by thresholds defined.
+        Returns:
+            DataFrame filtered by thresholds defined.
         """
         dd1, dd2, dd1_id, dd2_id = _load_alias_params()
         df_copy = df.copy()
@@ -194,10 +220,7 @@ class Complexity:
                     env_params = os.environ.get("CANON_STATS_POPULATION_PARAMS")
 
                     # Creates params dictionary
-                    pop_params = {}
-                    for row in env_params.split("|"):
-                        [index, v] = row.split(":")
-                        pop_params[index] = v
+                    pop_params = convert_dict(convert_dict, "|")
 
                     # Adds timespan to dictionary
                     if "YearPopulation" in params:
@@ -220,40 +243,6 @@ class Complexity:
                         df_sum = df[self.measure].sum()
                         threshold_value *= df_sum
                     list_temp = df_temp[df_temp[self.measure] >= threshold_value][dd_id].unique()
-                    df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
-
-        else:
-            if "threshold_Population" in params:
-                # Get params for population api
-                POP_API = os.environ.get("CANON_STATS_POPULATION_BASE")
-                env_params = os.environ.get("CANON_STATS_POPULATION_PARAMS")
-
-                # Creates params dictionary
-                pop_params = {}
-                for row in env_params.split("|"):
-                    [index, value] = row.split(":")
-                    pop_params[index] = value
-
-                # Adds timespan to dictionary
-                if "YearPopulation" in params:
-                    pop_params["Year"] = params.get("YearPopulation")
-                else:
-                    pop_params["time"] = "year.latest"
-
-                # Calls population API
-                pop_df = BaseClass(POP_API, headers, auth_level, cubes_cache).get_data(pop_params)
-
-                # Gets list of country_id's that has a value over the threshold
-                list_temp_id = pop_df[pop_df[pop_params["measures"]] >= int(params.get("threshold_Population"))][dd1_id].unique()
-                df_copy = df_copy[df_copy[dd1_id].isin(list_temp_id)]
-
-
-            for dd in [dd1, dd2]:
-                filter_var = f"threshold_{dd}"
-                dd_id = get_dd_id(dd)
-                if filter_var in params and dd_id in list(df_copy):
-                    df_temp = df[[dd_id, self.measure]].groupby([dd_id]).sum().reset_index()
-                    list_temp = df_temp[df_temp[self.measure] >= float(params[filter_var])][dd_id].unique()
                     df_copy = df_copy[df_copy[dd_id].isin(list_temp)]
 
         return df_copy
