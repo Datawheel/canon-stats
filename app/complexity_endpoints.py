@@ -250,8 +250,10 @@ class Complexity:
 
     def load_step(self):
         """
-        Requests data from tesseract endpoint, and calculates RCA index.
-        @returns: RCA matrix.
+        Requests data from tesseract endpoint, and calculates RCA matrix.
+
+        Returns:
+            RCA matrix.
         """
         # Creates a dict with params
         dd1, dd2, dd1_id, dd2_id, measure = _load_params()
@@ -353,7 +355,6 @@ class Complexity:
 
             if self.method == "subnational":
                 return df_rca_subnat
-
             elif self.method == "relatedness":
                 # Copies original dataframe
                 df_final = df_right.copy()
@@ -364,7 +365,7 @@ class Complexity:
             else:
                 return pd.DataFrame([])
 
-        # Calculates RCA matrix
+        # Calculates RCA matrix. Default method.
         else:
             # Generates an unique ID for the query
             params_id = get_hash_id(filtered_params(_params))
@@ -402,15 +403,23 @@ class Complexity:
 
     def transform_step(self, df, dds, measure):
         """
-        Transforms the dataframe after doing complexity calculations.
-        @returns: DataFrame transformed.
+        Applies filters, and options (sort / limit) defined by the user.
+        Also, it includes labels on the DataFrame, and ranking measure.
+
+        Parameters:
+            df (DataFrame): List-oriented DataFrame.
+            dd2 (List): List with drilldowns defined.
+            measure (String): Measure name.
+
+        Returns:
+            df (DataFrame): List-oriented DataFrame
         """
         # Includes Ranking.
         if self.ranking:
             df = df.sort_values(measure, ascending=False)
             df[f"{measure} Ranking"] = range(1, df.shape[0] + 1)
 
-        # Filters dataframe by each drilldowns.
+        # Filters dataframe by each drilldown.
         for dd in dds:
             filter_var = f"filter_{dd}"
             filter_id = get_dd_id(dd)
@@ -513,7 +522,7 @@ class Complexity:
 
     def _complexity(self):
         """
-        Calculates ECI / PCI
+        Calculates ECI / PCI index.
         """
         df = self.load_step()
         dd1 = self.dd1
@@ -527,13 +536,16 @@ class Complexity:
         pci_measure = self.pci_measure
         rca_measure = self.rca_measure
 
-        complexity_measure = eci_measure if self.endpoint == "eci" else pci_measure
-        complexity_dd_id = dd1_id if self.endpoint == "eci" else dd2_id
+        # Verifies if endpoint defined by the user is "eci".
+        is_eci = self.endpoint == "eci"
+
+        complexity_measure = eci_measure if is_eci else pci_measure
+        complexity_dd_id = dd1_id if is_eci else dd2_id
 
         df_copy = df.copy()
         df = pivot_data(df, dd1_id, dd2_id, rca_measure)
 
-        # Filters by ECI threshold
+        # If eciThreshold param is defined, applies a filter into the dataframe.
         if self.eci_threshold:
             rcas = df.copy()
             rcas[rcas >= 1] = 1
@@ -567,7 +579,7 @@ class Complexity:
 
         else:
             eci, pci = complexity(df, iterations)
-            complexity_data = eci if self.endpoint == "eci" else pci
+            complexity_data = eci if is_eci else pci
             results = pd.DataFrame(complexity_data).rename(columns={0: complexity_measure}).reset_index()
 
         results = self.transform_step(results, [dd1, dd2], complexity_measure)

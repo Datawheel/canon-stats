@@ -11,16 +11,17 @@ from regressions.prophet import prophet
 from base import BaseClass, API, CUBES_API
 from cache import InternalCache
 
-params = json.loads(sys.argv[1])
-headers = sys.argv[2]
-auth_level = int(sys.argv[4]) or 0
-server_headers = sys.argv[5]
-cubes_cache = InternalCache(CUBES_API, json.loads(headers)).cubes
+auth_level = int(sys.argv[4]) or 0 # Auth level
+headers = json.loads(sys.argv[3]) # Headers
+params = json.loads(sys.argv[1]) # Query params
+cubes_cache = InternalCache(CUBES_API, headers).cubes
 
 
 class Regressions:
     def __init__(self, name):
-        self.base = BaseClass(API, json.loads(headers), auth_level, cubes_cache)
+        base_class = BaseClass(API, headers, auth_level, cubes_cache)
+        self.base = base_class
+        self.data = base_class.get_data(params)
         self.name = name
 
 
@@ -33,25 +34,25 @@ class Regressions:
 
     def _ols(self):
         data = ols(API, params, headers)
-        print(json.dumps(data, ignore_nan=True))
+        self.base.to_json(data)
 
     def _logit(self):
         data = logit(API, params, headers)
-        print(json.dumps(data, ignore_nan=True))
+        self.base.to_json(data)
 
     def _arima(self):
         data = arima(API, params, headers)
-        print(json.dumps(data, ignore_nan=True))
+        self.base.to_json(data)
 
     def _probit(self):
         data = probit(API, params, headers)
-        print(json.dumps(data))
+        self.base.to_json(data)
 
     def _prophet(self):
-        df = self.base.get_data(params)
+        df = self.data.copy()
         data = prophet(df, params)
-        print(json.dumps(data, ignore_nan=True))
+        self.base.to_json(data)
 
 if __name__ == "__main__":
-    name = str(sys.argv[3])
+    name = str(sys.argv[2])
     Regressions(name).get()
