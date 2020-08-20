@@ -38,3 +38,7 @@ class BaseClass:
             "data": json.loads(df.to_json(orient="records"))
         }
         print(json.dumps(output))
+
+
+    def to_json(self, data):
+        print(json.dumps(data, ignore_nan=True))

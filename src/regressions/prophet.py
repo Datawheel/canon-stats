@@ -170,7 +170,7 @@ def prophet(df, params):
     output = output.drop(output[output["Date"] == 0].index)
 
     return { 
-        "data" : output.to_dict(orient = "records"),
+        "data" : output.to_dict(orient="records"),
         "params" : {
             "changepoint_prior_scale" : changepoint_prior_scale,
             "changepoint_range" : changepoint_range,
