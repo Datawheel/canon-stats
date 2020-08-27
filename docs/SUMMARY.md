@@ -21,15 +21,15 @@ On the other hand, there are the following optional parameters:
 
 1) `&prediction=<value>`
   "true" is used when you want to obtain the rolling period of an additional period to the one available in the data.
-  *defaul:* "false"
+  *default:* "false"
 
 2) `&window=<value>`
   Number of observations used to calculate the statistic
-  *defaul:* 3
+  *default:* 3
 
 3) `&periods=<value>`
   Minimum number of observations required to calculate the statistic of a window
-  *defaul:* the value determined in the window
+  *default:* the value determined in the window
 
 ## Examples  
 
@@ -42,7 +42,7 @@ On the other hand, there are the following optional parameters:
 The endpoint will return Rolling Mean for each year considering windows of 4 observations, additionally the value of the statistic is obtained for a year in the future (2021).
 
 ```
-{
+  {
     data: [
         {
         Year: 2014,
@@ -61,7 +61,7 @@ The endpoint will return Rolling Mean for each year considering windows of 4 obs
         Trade Value Rolling Mean: 2035516449074.5
         }
     ]
-}
+  }
 ```
 
 ```
@@ -70,7 +70,7 @@ The endpoint will return Rolling Mean for each year considering windows of 4 obs
 The endpoint will return Rolling Mean for each month considering windows of 4 observations, but since periods=1 in the first 3 observations the average will calculated only between the existing ones.
 
 ```
-{
+  {
     data: [
         {
         Year: 2010,
@@ -101,7 +101,7 @@ The endpoint will return Rolling Mean for each month considering windows of 4 ob
         },
         ...
     ]
-}
+  }
 ```
 
 ### 2) Two dimensions
@@ -112,37 +112,37 @@ The endpoint will return Rolling Mean for each month considering windows of 4 ob
 The endpoint will return the calculation of the rolling mean by geographic zones in each year considering windows of 3 observations and a minimum period similar to these, without predictions.
 
 ```
-{
-  data: [
-    {
-    Year: 2012,
-    Subnat Geography ID: 1,
-    Trade Value: 7935113630.254646,
-    Trade Value Rolling Mean: 7569884615.168799,
-    Subnat Geography: "Alava"
-    },
-    {
-    Year: 2013,
-    Subnat Geography ID: 1,
-    Trade Value: 7737667357.976483,
-    Trade Value Rolling Mean: 7893170718.35331,
-    Subnat Geography: "Alava"
-    },
-    {
-    Year: 2014,
-    Subnat Geography ID: 1,
-    Trade Value: 8192147353.564777,
-    Trade Value Rolling Mean: 7954976113.931969,
-    Subnat Geography: "Alava"
-    },
-    {
-    Year: 2015,
-    Subnat Geography ID: 1,
-    Trade Value: 9133127050.807846,
-    Trade Value Rolling Mean: 8354313920.783035,
-    Subnat Geography: "Alava"
-    },
-    ...
-  ]
-}
+  {
+    data: [
+      {
+      Year: 2012,
+      Subnat Geography ID: 1,
+      Trade Value: 7935113630.254646,
+      Trade Value Rolling Mean: 7569884615.168799,
+      Subnat Geography: "Alava"
+      },
+      {
+      Year: 2013,
+      Subnat Geography ID: 1,
+      Trade Value: 7737667357.976483,
+      Trade Value Rolling Mean: 7893170718.35331,
+      Subnat Geography: "Alava"
+      },
+      {
+      Year: 2014,
+      Subnat Geography ID: 1,
+      Trade Value: 8192147353.564777,
+      Trade Value Rolling Mean: 7954976113.931969,
+      Subnat Geography: "Alava"
+      },
+      {
+      Year: 2015,
+      Subnat Geography ID: 1,
+      Trade Value: 9133127050.807846,
+      Trade Value Rolling Mean: 8354313920.783035,
+      Subnat Geography: "Alava"
+      },
+      ...
+    ]
+  }
 ```

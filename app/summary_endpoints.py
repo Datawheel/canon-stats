@@ -14,7 +14,7 @@ class Summary:
     def __init__(self, name):
         self.name = name
 
-        # Gets custom params.
+        # Gets custom params
         window = params.get("window")
         prediction = params.get("prediction")
         periods = params.get("periods")
@@ -40,95 +40,80 @@ class Summary:
         api = requests.get(API, params=params)
 
         #params
-        measure = params["measures"].split(",")[0]
-        drilldowns = params["drilldowns"].split(",")
+        measure = params.get("measures")
+        drilldowns = params.get("drilldowns").split(",")
         type_time = ["Year", "Quarter", "Month", "Day"]
 
         # Get variables from Class
         window = self.window
         prediction = self.prediction
         periods = self.periods
-        #raise Exception(periods)
 
-        if(len(drilldowns) == 2):
-            period = list(set(drilldowns).intersection(type_time))[0] 
-            period_id = period if period == "Year" else period + " ID"
-            index = 0 if drilldowns.index(period) else 1
-            parameters = drilldowns[index]
-            parameters_id = parameters + " ID"
-
-        else: 
-            parameters = drilldowns[0] 
-            parameters_id = drilldowns[0] if drilldowns[0] == "Year" else drilldowns[0] + " ID"
+        period = list(set(drilldowns).intersection(type_time))[0] 
+        period_id = period if period == "Year" else period + " ID"
+        index = 0 if drilldowns.index(period) else 1
+        parameters = drilldowns[index] if len(drilldowns) > index else period
+        parameters_id = parameters + " ID" if len(drilldowns) > index else period_id 
             
         def fill_missing(period, parameters_id, df, list_params): 
             #fill missing rows in dataframe
-            df_new_index = df.set_index(list_params)
-            new_index = pd.MultiIndex.from_product(df_new_index.index.levels)
-            new_df = df_new_index.reindex(new_index)
+            if parameters_id == "Year":
+                list_complete = list(range(min(df[parameters_id]), max(df[parameters_id])+list_params))
 
-            df_complete = new_df.fillna(0)
-            df_complete = df_complete.reset_index()
-            df_complete = df_complete.rename(columns = {"level_0": period, "level_1": parameters_id}) if len(list_params) <= 2 else df_complete.rename(columns = {"level_0": "Year", "level_1": period, "level_2": parameters_id})
+                #complete missing years
+                if list_complete != list(df[parameters_id]):
+                    time_missing = list(set(list_complete).difference(set(df[parameters_id])))
+                    for k in range(len(time_missing)):
+                        df = df.append({parameters_id : time_missing[k], measure: 0} , ignore_index=True)
+                
+                #sort variable
+                df_complete = df.sort_values(by=parameters_id, ascending=True)
             
-            #sort variable
-            df_complete = df_complete.sort_values(by=[period, parameters_id], ascending=[True, True])
+            else:
+                df_new_index = df.set_index(list_params)
+                new_index = pd.MultiIndex.from_product(df_new_index.index.levels)
+                new_df = df_new_index.reindex(new_index)
+
+                df_complete = new_df.fillna(0)
+                df_complete = df_complete.reset_index()
+                df_complete = df_complete.rename(columns = {"level_0": period, "level_1": parameters_id}) if len(list_params) <= 2 else df_complete.rename(columns = {"level_0": "Year", "level_1": period, "level_2": parameters_id})
+                
+                #sort variable
+                df_complete = df_complete.sort_values(by=[period, parameters_id], ascending=[True, True])
 
             return df_complete
         
         #Read api
         df = pd.DataFrame(api.json()["data"])
         
-        #only Year
-        if((len(drilldowns) == 1) & (parameters_id == "Year")):
+        #one drilldowns
+        if len(drilldowns) == 1:
             #if want to predict
-            long = 2 if prediction == True else 1
-            list_complete = list(range(min(df[parameters]), max(df[parameters])+long))
-
-            #complete missing years
-            if list_complete != list(df[parameters]):
-                time_missing = list(set(list_complete).difference(set(df[parameters])))
-                for k in range(len(time_missing)):
-                    df = df.append({parameters : time_missing[k], measure: 0} , ignore_index=True)
-            
-            #sort variable
-            df = df.sort_values(by=parameters, ascending=True)
-            
-            #rolling mean
-            df["Trade Value Rolling Mean"] = df[measure].rolling(window=window,min_periods=periods,center=False).mean() 
-            df["Trade Value Rolling Mean"] = df["Trade Value Rolling Mean"].shift(1) if prediction == True else df["Trade Value Rolling Mean"]
-            df_final = df.dropna().reset_index(drop=True) 
-        
-        #only time != Year 
-        elif((len(drilldowns) == 1) & (parameters_id != "Year")):
-            #last dataframe
-            last_data = max(df[df["Year"] == max(df["Year"])][parameters_id])
-            last_data = last_data+1 if prediction == True else last_data
+            last_data = max(df[df["Year"] == max(df["Year"])][parameters_id])+1 if prediction else max(df[df["Year"] == max(df["Year"])][parameters_id])
             
             #complete dataframe
+            long = 2 if prediction else 1
             list_time = ["Year", parameters_id]
-            df_complete = fill_missing("Year", parameters_id, df, list_time)
-            
+            df_complete = fill_missing("Year", parameters_id, df, list_time) if parameters_id != "Year" else  fill_missing(period, parameters_id, df, long)
+
             #rolling mean
-            df_complete["Trade Value Rolling Mean"] = df_complete[measure].rolling(window=window,min_periods=periods,center=False).mean() 
-            df_complete["Trade Value Rolling Mean"] = df_complete["Trade Value Rolling Mean"].shift(1) if prediction == True else df_complete["Trade Value Rolling Mean"]
+            df_complete["Trade Value Rolling Mean"] = df_complete[measure].rolling(window=window, min_periods=periods, center=False).mean()
+            df_complete["Trade Value Rolling Mean"] = df_complete["Trade Value Rolling Mean"].shift(1) if prediction else df_complete["Trade Value Rolling Mean"]
             df_rolling = df_complete.dropna().reset_index(drop=True) 
             df_final = df_rolling.drop(df_rolling[(df_rolling["Year"] == max(df_rolling["Year"])) & (df_rolling[parameters_id] > last_data)].index)
-            
-            #prediction
-            if prediction == True:
+
+            if prediction and parameters_id != "Year":
                 df_index = df[[parameters_id, parameters]].drop_duplicates()
                 df_final = df_final.drop(columns = ["Quarter", "Quarter ID", parameters]) if parameters == "Month" else df_final.drop(columns = [parameters])
                 df_final = df_final.merge(df_index, left_on=parameters_id, right_on=parameters_id, how="left")
         
-        #Zone + time != Year
-        elif((len(drilldowns) == 2) & (period != "Year")):
+        else:
             #Create dataframe with zones 
             df_index = df[[parameters_id, parameters]].drop_duplicates()
             df_index_time = df[[period_id, period]].drop_duplicates()
-
+        
             #fill missing rows
-            list_params = ["Year", period_id, parameters_id]
+            list_params = ["Year", period_id, parameters_id] if period != "Year" else [period_id, parameters_id]
             df_complete = fill_missing(period_id, parameters_id, df, list_params)
 
             #last dataframe
@@ -142,44 +127,21 @@ class Summary:
                 df_filter = df_complete[df_complete[parameters_id] == drilldowns_list[i]]
                 df_filter = df_filter.drop(df_filter[(df_filter["Year"] == max(df_filter["Year"])) & (df_filter[period_id] > last_data)].index)
                 df_filter = df_filter.sort_values(by=["Year", period_id], ascending=[True, True])
-                df_filter["Trade Value Rolling Mean"] = df_filter[measure].rolling(window=window,min_periods=periods,center=False).mean()
+                df_filter["Trade Value Rolling Mean"] = df_filter[measure].rolling(window=window, min_periods=periods, center=False).mean()
 
-                if(prediction == True):
-                    df_filter = df_filter.append({"Year": max(df["Year"]), period_id: last_data+1, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True)
+                if prediction:
+                    df_filter = df_filter.append({"Year": max(df["Year"]), period_id: last_data+1, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True) if period != "Year" else df_filter.append({period : last_year, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True) 
                     df_filter["Trade Value Rolling Mean"] = df_filter["Trade Value Rolling Mean"].shift(1)
-
-                df_filter = df_filter.drop(columns = ["Quarter", "Quarter ID", parameters, period]) if period == "Month" else  df_filter.drop(columns = [parameters, period])
-                df_rolling = pd.concat([df_rolling, df_filter]).dropna().reset_index(drop=True)
-
-            #Add names of ID
-            df_final = df_rolling.merge(df_index, left_on=parameters_id, right_on=parameters_id, how="left")
-            df_final = df_final.merge(df_index_time, left_on=period_id, right_on=period_id, how="left")
-            
-        #Zone + Year
-        else:
-            #Create dataframe with zones 
-            df_index = df[[parameters_id, parameters]].drop_duplicates()
-            list_parameters = [period, parameters_id]
-            df_complete = fill_missing(period, parameters_id, df, list_parameters)
-
-            last_period = df[period].unique()[-1]
-            drilldowns_list = df[parameters_id].unique()
-
-            df_rolling = pd.DataFrame()
-            for i in range(len(drilldowns_list)):
-                df_filter = df_complete[df_complete[parameters_id] == drilldowns_list[i]]
-                df_filter["Trade Value Rolling Mean"] = df_filter[measure].rolling(window=window,min_periods=periods,center=False).mean()
-
-                if(prediction == True):
-                    df_filter = df_filter.append({period : last_period+1, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True)
-                    df_filter["Trade Value Rolling Mean"] = df_filter["Trade Value Rolling Mean"].shift(1)
-
-                df_filter = df_filter.drop(columns = [parameters]) 
-                df_rolling = pd.concat([df_rolling, df_filter]).dropna().reset_index(drop=True)
                 
+                df_filter = df_filter.drop(columns = [parameters])
+                df_rolling = pd.concat([df_rolling, df_filter]).dropna().reset_index(drop=True)
+
             #Add names of ID
             df_final = df_rolling.merge(df_index, left_on=parameters_id, right_on=parameters_id, how="left")
-            
+            if period != "Year":
+                df_final = df_final.drop(columns = ["Quarter", "Quarter ID", period]) if period == "Month" else  df_final.drop(columns = [period])
+                df_final = df_final.merge(df_index_time, left_on=period_id, right_on=period_id, how="left") if period_id != "Year" else df_final
+                    
         output = {
             "data": json.loads(df_final.to_json(orient="records"))    
         }
