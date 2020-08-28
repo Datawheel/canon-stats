@@ -6,3 +6,4 @@ venv/
 .publish.sh
 *.ipynb
 !examples/*.ipynb
+.vscode/settings.json
