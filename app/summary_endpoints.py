@@ -63,8 +63,8 @@ class Summary:
                 #complete missing years
                 if list_complete != list(df[parameters_id]):
                     time_missing = list(set(list_complete).difference(set(df[parameters_id])))
-                    for k in range(len(time_missing)):
-                        df = df.append({parameters_id : time_missing[k], measure: 0} , ignore_index=True)
+                    for k in time_missing:
+                        df = df.append({parameters_id : k, measure: 0} , ignore_index=True)
                 
                 #sort variable
                 df_complete = df.sort_values(by=parameters_id, ascending=True)
@@ -76,7 +76,7 @@ class Summary:
 
                 df_complete = new_df.fillna(0)
                 df_complete = df_complete.reset_index()
-                df_complete = df_complete.rename(columns = {"level_0": period, "level_1": parameters_id}) if len(list_params) <= 2 else df_complete.rename(columns = {"level_0": "Year", "level_1": period, "level_2": parameters_id})
+                df_complete = df_complete.rename(columns={"level_0": period, "level_1": parameters_id}) if len(list_params) <= 2 else df_complete.rename(columns={"level_0": "Year", "level_1": period, "level_2": parameters_id})
                 
                 #sort variable
                 df_complete = df_complete.sort_values(by=[period, parameters_id], ascending=[True, True])
@@ -89,7 +89,8 @@ class Summary:
         #one drilldowns
         if len(drilldowns) == 1:
             #if want to predict
-            last_data = max(df[df["Year"] == max(df["Year"])][parameters_id])+1 if prediction else max(df[df["Year"] == max(df["Year"])][parameters_id])
+            last_data = max(df[df["Year"] == max(df["Year"])][parameters_id])
+            last_data = last_data+1 if prediction else last_data
             
             #complete dataframe
             long = 2 if prediction else 1
@@ -98,13 +99,16 @@ class Summary:
 
             #rolling mean
             df_complete["Trade Value Rolling Mean"] = df_complete[measure].rolling(window=window, min_periods=periods, center=False).mean()
-            df_complete["Trade Value Rolling Mean"] = df_complete["Trade Value Rolling Mean"].shift(1) if prediction else df_complete["Trade Value Rolling Mean"]
+            
+            if prediction:
+                df_complete["Trade Value Rolling Mean"] = df_complete["Trade Value Rolling Mean"].shift(1) 
+            
             df_rolling = df_complete.dropna().reset_index(drop=True) 
             df_final = df_rolling.drop(df_rolling[(df_rolling["Year"] == max(df_rolling["Year"])) & (df_rolling[parameters_id] > last_data)].index)
 
             if prediction and parameters_id != "Year":
                 df_index = df[[parameters_id, parameters]].drop_duplicates()
-                df_final = df_final.drop(columns = ["Quarter", "Quarter ID", parameters]) if parameters == "Month" else df_final.drop(columns = [parameters])
+                df_final = df_final.drop(columns=["Quarter", "Quarter ID", parameters]) if parameters == "Month" else df_final.drop(columns = [parameters])
                 df_final = df_final.merge(df_index, left_on=parameters_id, right_on=parameters_id, how="left")
         
         else:
@@ -123,23 +127,23 @@ class Summary:
             drilldowns_list = df[parameters_id].unique()
 
             df_rolling = pd.DataFrame()
-            for i in range(len(drilldowns_list)):
-                df_filter = df_complete[df_complete[parameters_id] == drilldowns_list[i]]
+            for i in drilldowns_list:
+                df_filter = df_complete[df_complete[parameters_id] == i]
                 df_filter = df_filter.drop(df_filter[(df_filter["Year"] == max(df_filter["Year"])) & (df_filter[period_id] > last_data)].index)
                 df_filter = df_filter.sort_values(by=["Year", period_id], ascending=[True, True])
                 df_filter["Trade Value Rolling Mean"] = df_filter[measure].rolling(window=window, min_periods=periods, center=False).mean()
 
                 if prediction:
-                    df_filter = df_filter.append({"Year": max(df["Year"]), period_id: last_data+1, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True) if period != "Year" else df_filter.append({period : last_year, parameters_id:  drilldowns_list[i], measure: 0} , ignore_index=True) 
+                    df_filter = df_filter.append({"Year": max(df["Year"]), period_id: last_data+1, parameters_id:  i, measure: 0} , ignore_index=True) if period != "Year" else df_filter.append({period : last_year, parameters_id:  i, measure: 0} , ignore_index=True) 
                     df_filter["Trade Value Rolling Mean"] = df_filter["Trade Value Rolling Mean"].shift(1)
                 
-                df_filter = df_filter.drop(columns = [parameters])
+                df_filter = df_filter.drop(columns=[parameters])
                 df_rolling = pd.concat([df_rolling, df_filter]).dropna().reset_index(drop=True)
 
             #Add names of ID
             df_final = df_rolling.merge(df_index, left_on=parameters_id, right_on=parameters_id, how="left")
             if period != "Year":
-                df_final = df_final.drop(columns = ["Quarter", "Quarter ID", period]) if period == "Month" else  df_final.drop(columns = [period])
+                df_final = df_final.drop(columns=["Quarter", "Quarter ID", period]) if period == "Month" else  df_final.drop(columns = [period])
                 df_final = df_final.merge(df_index_time, left_on=period_id, right_on=period_id, how="left") if period_id != "Year" else df_final
                     
         output = {

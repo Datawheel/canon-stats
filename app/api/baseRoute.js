@@ -26,7 +26,8 @@ const LOGGING = CANON_STATS_LOGGING || false;
 const options = {
   "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
   "network": ["network"],
-  "regressions": ["ols", "logit", "arima", "probit", "prophet"]
+  "regressions": ["ols", "logit", "arima", "probit", "prophet"],
+  "summary": ["rolling"]
 };
 
 const getApiToken = (headers, user) => {
