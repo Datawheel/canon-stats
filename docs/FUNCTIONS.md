@@ -4,6 +4,8 @@ Economic Complexity studies the geography and dynamics of economic activities us
 
 ## Functions
 
+#### Note: It is important to note that even though the functions do not use a parameter in relation to time, the data used for the calculations must be per period, for example working with world exports for the year 2020.
+
 ### RCA
 
 The *Revealed Comparative Advantage* (RCA) is an index introduced by Balassa (1965), which is used to evaluate the main products to be exported by a country, and their comparative advantages in relation to the level of world exports (Hidalgo et al., 2007).
