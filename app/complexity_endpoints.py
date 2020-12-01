@@ -220,7 +220,7 @@ class Complexity:
                     env_params = os.environ.get("CANON_STATS_POPULATION_PARAMS")
 
                     # Creates params dictionary
-                    pop_params = convert_dict(convert_dict, "|")
+                    pop_params = convert_dict(env_params, "|")
 
                     # Adds timespan to dictionary
                     if "YearPopulation" in params:
