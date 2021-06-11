@@ -24,7 +24,7 @@ const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
 const LOGGING = CANON_STATS_LOGGING || false;
 
 const options = {
-  "complexity": ["eci", "network", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
+  "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "relative_relatedness", "opportunity_gain"],
   "network": [],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"],
   "summary": ["rolling"]

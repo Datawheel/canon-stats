@@ -3,7 +3,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-def relatedness(rcas, proximities):
+
+def relative_relatedness(rcas,proximities):
     rcas = rcas.copy()
     rcas[rcas >= 1] = 1
     rcas[rcas < 1] = 0
@@ -22,4 +23,8 @@ def relatedness(rcas, proximities):
     # We now have our densities matrix by dividing numerator by denomiator
     densities = density_numerator / density_denominator
 
-    return densities
+    wcp = densities
+    wcp_mean =  wcp.mean(axis=1)
+    wcp_std =  wcp.std(axis=1)
+    return wcp.transform(lambda x: (x-wcp_mean)/wcp_std)
+    
