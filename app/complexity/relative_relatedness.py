@@ -3,7 +3,6 @@ import sys
 import numpy as np
 import pandas as pd
 
-
 def relative_relatedness(rcas,proximities):
     rcas = rcas.copy()
     rcas[rcas >= 1] = 1
@@ -26,5 +25,6 @@ def relative_relatedness(rcas,proximities):
     wcp = densities
     wcp_mean =  wcp.mean(axis=1)
     wcp_std =  wcp.std(axis=1)
+    
     return wcp.transform(lambda x: (x-wcp_mean)/wcp_std)
     
