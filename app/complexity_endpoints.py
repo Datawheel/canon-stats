@@ -12,7 +12,8 @@ from complexity.complexity import complexity
 from complexity.opportunity_gain import opportunity_gain
 from complexity.proximity import proximity
 from complexity.rca import rca
-from complexity.relatedness import relatedness
+from complexity.relatedness import relatedness 
+from complexity.relative_relatedness import relative_relatedness
 
 def yn(x):
     value = x and x in ["true", "1", True]
@@ -180,6 +181,7 @@ class Complexity:
         self.ranking = yn(params.get("ranking")) # @param
         self.rca_measure = f"{measure} RCA" # @measure
         self.relatedness_measure = f"{measure} Relatedness" # @measure
+        self.relative_relatedness_measure = f"{measure} Relative Relatedness" # @measure
         self.threshold = convert_dict(threshold) # @param
 
 
@@ -265,8 +267,8 @@ class Complexity:
         # Calculates RCA matrix for local units (subnational).
         # We compare the share of an activity in a local unit (e.g. region, province) with the share of that activity in the world. 
         # For further references: https://oec.world/en/resources/methods#uses
-        # Methods accepted are "subnational" and "relatedness".
-        if self.method in ["subnational", "relatedness"]:
+        # Methods accepted are "subnational" , "relatedness" and "relative_relatedness"
+        if self.method in ["subnational", "relatedness", "relative_relatedness"]:
             # Gets params related with "subnational" cube
             params_left = {k:_params[k] for k in _params if re.match("(?!.*(filter_|Right)).*$", k)}
             # Gets params related with "world" cube
@@ -355,7 +357,7 @@ class Complexity:
 
             if self.method == "subnational":
                 return df_rca_subnat
-            elif self.method == "relatedness":
+            elif self.method in ["relatedness", "relative_relatedness"]:
                 # Copies original dataframe
                 df_final = df_right.copy()
                 # Calculates RCA index
@@ -685,6 +687,35 @@ class Complexity:
         output = pd.melt(output.reset_index(), id_vars=[dd1_id], value_name=relatedness_measure)
 
         output = self.transform_step(output, [dd1, dd2], relatedness_measure)
+        output = output.merge(df, on=[dd1_id, dd2_id], how="inner")
+
+        self.base.to_output(output)
+    
+    def _relative_relatedness(self):
+        if self.method == "relative_relatedness":
+            df, df_country = self.load_step()
+        else: 
+            df = self.load_step()
+
+        dd1 = self.dd1
+        dd1_id = self.dd1_id
+        dd2 = self.dd2
+        dd2_id = self.dd2_id
+        rca_measure = self.rca_measure
+        relative_relatedness_measure = self.relative_relatedness_measure
+
+        df_copy = df.copy()
+        df_copy = pivot_data(df_copy, dd1_id, dd2_id, rca_measure)
+
+        if self.method == "relative_relatedness":
+            phi = proximity(df_country)
+            output = relative_relatedness(df_copy.reindex(columns=list(phi)).fillna(0), phi)
+        else: 
+            output = relative_relatedness(df_copy, proximity(df_copy))
+        
+        output = pd.melt(output.reset_index(), id_vars=[dd1_id], value_name=relative_relatedness_measure)
+
+        output = self.transform_step(output, [dd1, dd2], relative_relatedness_measure)
         output = output.merge(df, on=[dd1_id, dd2_id], how="inner")
 
         self.base.to_output(output)

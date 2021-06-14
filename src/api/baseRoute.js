@@ -24,7 +24,7 @@ const ENGINE = CANON_STATS_PYTHON_ENGINE || "python3";
 const LOGGING = CANON_STATS_LOGGING || false;
 
 const options = {
-  "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "opportunity_gain"],
+  "complexity": ["eci", "pci", "rca", "proximity", "relatedness", "relative_relatedness", "opportunity_gain"],
   "network": ["network"],
   "regressions": ["ols", "logit", "arima", "probit", "prophet"],
   "summary": ["rolling"]
@@ -47,15 +47,15 @@ const serverApiToken = OLAP_PROXY_SECRET ? jwt.sign({
   auth_level: 10,
   sub: "server",
   status: "valid"
-}, OLAP_PROXY_SECRET, { expiresIn: "30m" }) : "";
+}, OLAP_PROXY_SECRET, {expiresIn: "30m"}) : "";
 
 module.exports = function (app) {
   for (const d of Object.entries(options)) {
     for (const endpoint of d[1]) {
       app.get(`${BASE_URL}/${endpoint}`, (req, res) => {
-        const { headers, query, user } = req;
-        const { debug } = req.query;
-        const { apiToken, authLevel } = OLAP_PROXY_SECRET ? getApiToken(headers, user) : { authLevel: 0 };
+        const {headers, query, user} = req;
+        const {debug} = req.query;
+        const {apiToken, authLevel} = OLAP_PROXY_SECRET ? getApiToken(headers, user) : {authLevel: 0};
         let timeoutId = null;
         let timedOut = false;
 
@@ -78,13 +78,15 @@ module.exports = function (app) {
         //  allows killing of all of child's descendants.
         //  refs: http://azimi.me/2014/12/31/kill-child_process-node-js.html
         //        https://github.com/nodejs/node-v0.x-archive/issues/1811
-        const py = spawn(ENGINE, ["-W", "ignore", pyPath, apiQuery, endpoint, apiHeaders, authLevel, apiServerHeaders], { detached: true });
+        const py = spawn(ENGINE, 
+          ["-W", "ignore", pyPath, apiQuery, endpoint, apiHeaders, authLevel, apiServerHeaders], 
+          {detached: true});
         let respString = "";
         let traceback = "";
 
         // build response string based on results of python script
         py.stdout.on("data", data => respString += data.toString());
-
+        
         // catch stderr errors
         py.stderr.on("data", data => traceback += data.toString());
 
@@ -93,7 +95,8 @@ module.exports = function (app) {
           try {
             const dataResult = JSON.parse(respString);
             return res.json(dataResult);
-          } catch (error) {
+          } 
+          catch (error) {
             const output = {
               error: error.toString()
             };
@@ -117,7 +120,7 @@ module.exports = function (app) {
         });
 
         // ensure timeout is set and is an actual number
-        if (!isNaN(timeout)) {
+        if(!isNaN(timeout)) {
           timeoutId = setTimeout(() => {
             if (yn(LOGGING)) {
               console.log("---canon-stats timeout---");
@@ -135,7 +138,7 @@ module.exports = function (app) {
             }
           }, timeout);
         }
-
+        
         // log the error
         py.on("error", err => {
           if (yn(LOGGING)) {
@@ -151,14 +154,15 @@ module.exports = function (app) {
         // if no timeout is set, do not clear
         py.on("exit", () => {
           if (timeoutId) {
-            clearTimeout(timeoutId);
+            clearTimeout(timeoutId)
           }
         });
+
       });
     };
   };
 
   app.get(`${BASE_URL}/version`, (req, res) => {
-    return res.json({ endpoints: options, version: process.env.npm_package_version });
+    return res.json({endpoints: options, version: process.env.npm_package_version});
   });
 };

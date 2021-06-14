@@ -1,6 +1,6 @@
 {
   "name": "@datawheel/canon-stats",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Reusable statistical, rolling mean and complexity calculations using NodeJS and Express",
   "main": "src/index.js",
   "scripts": {
