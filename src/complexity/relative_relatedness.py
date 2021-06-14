@@ -2,29 +2,17 @@
 import sys
 import numpy as np
 import pandas as pd
-
+from .relatedness import relatedness
 
 def relative_relatedness(rcas,proximities):
-    rcas = rcas.copy()
-    rcas[rcas >= 1] = 1
-    rcas[rcas < 1] = 0
+    opp = rcas.copy()
+    opp[opp >= 1] = np.nan
+    opp[opp < 1] = 1
+    
+    wcp = relatedness(rcas,proximities)
+    wcp_opp = opp*wcp
+    wcp_mean =  wcp_opp.mean(axis=1)
+    wcp_std =  wcp_opp.std(axis=1)
 
-    # Get numerator by matrix multiplication of proximities with M_im
-    density_numerator = rcas.dot(proximities)
-
-    # Get denominator by multiplying proximities by all ones vector thus
-    # getting the sum of all proximities
-    # rcas_ones = pd.DataFrame(np.ones_like(rcas))
-    rcas_ones = rcas * 0
-    rcas_ones = rcas_ones + 1
-    # print rcas_ones.shape, proximities.shape
-    density_denominator = rcas_ones.dot(proximities)
-
-    # We now have our densities matrix by dividing numerator by denomiator
-    densities = density_numerator / density_denominator
-
-    wcp = densities
-    wcp_mean =  wcp.mean(axis=1)
-    wcp_std =  wcp.std(axis=1)
     return wcp.transform(lambda x: (x-wcp_mean)/wcp_std)
     
